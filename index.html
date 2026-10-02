@@ -8,6 +8,7 @@
       name="description"
       content="Mapa colaborativo donde los vecinos de Guadalajara reportan si tienen agua, baja presión o servicio normal."
     />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,6 +17,20 @@
       rel="stylesheet"
     />
   </head>
+  <!-- Google tag (gtag.js) -->
+  <script
+    async
+    src="https://www.googletagmanager.com/gtag/js?id=G-8SGFYDCJ39"
+  ></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
+
+    gtag("config", "G-8SGFYDCJ39");
+  </script>
   <body>
     <header class="top">
       <a class="logo" href="/">wawhere</a>
