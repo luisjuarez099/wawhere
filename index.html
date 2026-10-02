@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>wawhere · ¿Hay agua en tu colonia?</title>
+    <meta
+      name="description"
+      content="Mapa colaborativo donde los vecinos de Guadalajara reportan si tienen agua, baja presión o servicio normal."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="top">
+      <a class="logo" href="/">wawhere</a>
+      <a data-map-link href="#">Abrir el mapa</a>
+    </header>
+
+    <main>
+      <section class="intro">
+        <h1>¿Hay agua en tu colonia?</h1>
+        <p>
+          Un mapa colaborativo donde los vecinos de la ZMG (Zona Metropolitana
+          de Guadalajara) reportan si tienen agua, baja presión o servicio
+          normal. Información en tiempo real, hecha por la comunidad, para la
+          comunidad.
+        </p>
+        <a class="button" data-map-link href="#">Abrir el mapa</a>
+      </section>
+
+      <section>
+        <p class="label">Por qué existe esto</p>
+        <h2>Los avisos llegan tarde, o no llegan.</h2>
+        <p>
+          Abrir la llave y que no salga agua es parte del día a día en muchas
+          colonias del área metropolitana. Los avisos llegan tarde o no llegan,
+          y la información se mueve por grupos de WhatsApp de forma desordenada.
+        </p>
+        <p>
+          wawhere junta esos reportes dispersos en un solo mapa. No es una
+          plataforma de quejas. No tiene agenda. Es solo un termómetro del
+          servicio que cualquiera puede consultar antes de poner la lavadora o
+          llenar el tinaco.
+        </p>
+      </section>
+
+      <section>
+        <p class="label">Cómo funciona</p>
+        <h2>Tres toques y listo.</h2>
+        <p>
+          Abres el mapa, permites tu ubicación, y reportas el estado del agua en
+          tu zona. Tu reporte aparece al instante para que otros vecinos lo
+          vean. Cuando varios reportes coinciden en la misma colonia, el sistema
+          confirma que hay un corte real.
+        </p>
+        <ul class="status">
+          <li>
+            <span class="dot red"></span><strong>Sin agua</strong>: las llaves
+            salen vacías
+          </li>
+          <li>
+            <span class="dot yellow"></span><strong>Baja presión</strong>: sale
+            un hilo, no es suficiente
+          </li>
+          <li>
+            <span class="dot green"></span><strong>Con agua</strong>: servicio
+            normal
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="label">Para qué te sirve</p>
+        <h2>
+          Saber si hay agua antes de necesitarla cambia cómo organizas tu día.
+        </h2>
+        <ul>
+          <li>Decidir si echar la carga de ropa a la lavadora</li>
+          <li>
+            Llenar cubetas o tinaco antes de que el corte llegue a tu zona
+          </li>
+          <li>Planear si cocinar en casa o comer fuera</li>
+          <li>Programar la limpieza cuando sí hay servicio</li>
+          <li>Avisarle a tu colonia con un solo toque</li>
+        </ul>
+      </section>
+
+      <section>
+        <p class="label">Lo que somos</p>
+        <h2>Vecinos informando a vecinos.</h2>
+        <p>
+          <strong>Gratuito.</strong> Hoy y siempre. Sin versión de pago. Más
+          adelante, quien quiera podrá aportar voluntariamente al mantenimiento
+          del proyecto.
+        </p>
+        <p>
+          <strong>Privado.</strong> No pedimos nombre, teléfono ni correo. Tu
+          ubicación se usa solo para colocar el reporte en la zona
+          correspondiente.
+        </p>
+        <p>
+          <strong>Comunitario.</strong> Vecinos informando a vecinos. Sin
+          empresas detrás, sin publicidad, sin agendas.
+        </p>
+        <p>
+          <strong>Informativo.</strong> Esto no señala ni critica. Solo muestra
+          datos para que puedas tomar mejores decisiones en tu día.
+        </p>
+      </section>
+
+      <section>
+        <p class="label">Preguntas</p>
+        <h2>Lo que más nos preguntan.</h2>
+        <div class="faq">
+          <details>
+            <summary>¿Necesito crear una cuenta?</summary>
+            <p>No. Solo abre la app, permite tu ubicación y reporta.</p>
+          </details>
+          <details>
+            <summary>¿Es gratis?</summary>
+            <p>Sí. No hay planes premium ni costos ocultos.</p>
+          </details>
+          <details>
+            <summary>¿Comparten mi ubicación exacta?</summary>
+            <p>No. Se usa para ubicar el reporte en tu colonia, nada más.</p>
+          </details>
+          <details>
+            <summary>¿Cómo saben si un reporte es real?</summary>
+            <p>
+              Cuando varios reportes coinciden en la misma zona y horario, el
+              sistema confirma el corte. Un reporte aislado se muestra pero no
+              se toma como confirmación.
+            </p>
+          </details>
+          <details>
+            <summary>¿Cómo puedo ayudar?</summary>
+            <p>
+              Usándolo y compartiéndolo. Próximamente abriremos formas de
+              contribuir al desarrollo de la plataforma.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <section class="closing">
+        <p>
+          wawhere está en fase de pruebas. Mientras más personas reporten, más
+          útil es el mapa para todos.
+        </p>
+        <div class="actions">
+          <a class="button" data-map-link href="#">Abrir el mapa</a>
+          <button class="button button--plain" type="button" id="share-btn">
+            Compartir
+          </button>
+        </div>
+        <p class="share-status" id="share-status" role="status"></p>
+      </section>
+    </main>
+
+    <footer>
+      wawhere · proyecto comunitario · Guadalajara, Jalisco · 2026
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
