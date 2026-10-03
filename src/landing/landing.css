@@ -1,18 +1,3 @@
-:root {
-  --text: #1d2327;
-  --muted: #5c6670;
-  --bg: #fbfaf7;
-  --line: #e2dfd8;
-  --blue: #1565c0;
-  --red: #d93b3b;
-  --yellow: #e5a50a;
-  --green: #2e9a5a;
-}
-
-* {
-  box-sizing: border-box;
-}
-
 body {
   margin: 0;
   padding: 0 20px;

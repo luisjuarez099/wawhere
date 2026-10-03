@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Mapa · wawhere</title>
+    <meta
+      name="description"
+      content="Mapa en tiempo real del estado del agua en la Zona Metropolitana de Guadalajara."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Inter:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8SGFYDCJ39"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-8SGFYDCJ39");
+    </script>
+  </head>
+  <body>
+    <div id="map" aria-label="Mapa de reportes de agua"></div>
+
+    <header class="map-bar">
+      <a class="map-logo" href="/">wawhere</a>
+      <p class="map-status" id="map-status" role="status"></p>
+    </header>
+
+    <section class="report-panel" id="report-panel" aria-labelledby="report-title">
+      <h1 class="report-title" id="report-title">¿Cómo está el agua donde estás?</h1>
+      <div class="report-buttons">
+        <button type="button" class="report-btn" data-status="no" disabled>
+          <span class="dot" style="background: var(--red)"></span>Sin agua
+        </button>
+        <button type="button" class="report-btn" data-status="baja" disabled>
+          <span class="dot" style="background: var(--yellow)"></span>Baja presión
+        </button>
+        <button type="button" class="report-btn" data-status="ok" disabled>
+          <span class="dot" style="background: var(--green)"></span>Con agua
+        </button>
+      </div>
+      <p class="report-msg" id="report-msg" role="status"></p>
+    </section>
+
+    <script type="module" src="/src/map/main.ts"></script>
+  </body>
+</html>

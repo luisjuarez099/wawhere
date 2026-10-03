@@ -1,0 +1,179 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+#map {
+  position: fixed;
+  inset: 0;
+}
+
+.map-bar {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.map-logo,
+.map-status:not(:empty),
+.report-panel {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+}
+
+.map-logo {
+  padding: 8px 14px;
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text);
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.map-status {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--red);
+}
+
+.map-status:empty {
+  display: none;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.report-popup {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.report-popup p {
+  margin: 4px 0;
+}
+
+.report-popup time {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ─── Controles 🔥 📌 📍 ─── */
+
+.map-controls button {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.map-controls button[aria-pressed='false'] {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  bottom: var(--panel-h, 0px);
+}
+
+/* ─── Tu ubicación ─── */
+
+.user-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgb(21 101 192 / 0.2);
+}
+
+/* ─── Panel de reporte ─── */
+
+.report-panel {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 14px 16px 10px;
+}
+
+.report-title {
+  margin: 0 0 10px;
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.report-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.report-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: 600 15px/1.2 'Inter', system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.report-btn:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.report-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.report-msg {
+  min-height: 1.4em;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.report-msg--ok {
+  color: var(--green);
+}
+
+.report-msg--error {
+  color: var(--red);
+}
+
+@media (max-width: 420px) {
+  .report-btn {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .report-btn .dot {
+    margin-right: 0;
+  }
+}

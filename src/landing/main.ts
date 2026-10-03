@@ -1,7 +1,8 @@
-import './style.css'
+import '../shared/tokens.css'
+import './landing.css'
 
-// URL del mapa real. Defínela en `.env` como VITE_MAP_URL=https://...
-const MAP_URL: string = import.meta.env.VITE_MAP_URL || '#'
+// Por defecto el mapa vive en /mapa/. Puedes sobreescribirlo con VITE_MAP_URL
+const MAP_URL: string = import.meta.env.VITE_MAP_URL || '/mapa/'
 
 document.querySelectorAll<HTMLAnchorElement>('[data-map-link]').forEach((a) => {
   a.href = MAP_URL
