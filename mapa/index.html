@@ -2,7 +2,10 @@
 <html lang="es-MX">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>Mapa · wawhere</title>
     <meta
       name="description"
@@ -18,7 +21,10 @@
     />
 
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-8SGFYDCJ39"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-8SGFYDCJ39"
+    ></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag() {
@@ -29,21 +35,29 @@
     </script>
   </head>
   <body>
-    <div id="map" aria-label="Mapa de reportes de agua"></div>
+    <div id="map" aria-label="Mapa de reportes de agua por colonia"></div>
 
     <header class="map-bar">
       <a class="map-logo" href="/">wawhere</a>
       <p class="map-status" id="map-status" role="status"></p>
     </header>
 
-    <section class="report-panel" id="report-panel" aria-labelledby="report-title">
-      <h1 class="report-title" id="report-title">¿Cómo está el agua donde estás?</h1>
+    <section
+      class="report-panel"
+      id="report-panel"
+      aria-labelledby="report-title"
+    >
+      <h1 class="report-title" id="report-title">
+        ¿Cómo está el agua en tu colonia?
+      </h1>
+      <p class="report-target" id="report-target" role="status" hidden></p>
       <div class="report-buttons">
         <button type="button" class="report-btn" data-status="no" disabled>
           <span class="dot" style="background: var(--red)"></span>Sin agua
         </button>
         <button type="button" class="report-btn" data-status="baja" disabled>
-          <span class="dot" style="background: var(--yellow)"></span>Baja presión
+          <span class="dot" style="background: var(--yellow)"></span>Baja
+          presión
         </button>
         <button type="button" class="report-btn" data-status="ok" disabled>
           <span class="dot" style="background: var(--green)"></span>Con agua

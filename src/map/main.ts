@@ -1,167 +1,265 @@
-import { Popup } from 'maplibre-gl'
-import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
-import { COLONIA_SOURCE, COLONIA_SOURCE_LAYER } from './boundaries-layer'
-import { REPORT_EXPIRY_MS, STATUS_COLORS, STATUS_LABELS } from './config'
-import type { Colonia, ColoniaResumenProps, ReportStatus, ResumenCollection } from './types'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import '../shared/tokens.css'
+import './map.css'
 
-const SOURCE = 'resumen'
+import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+// MapLibre v6 busca su worker junto a su propio .mjs; con Vite (pre-bundle y build)
+// ese archivo no existe, así que Vite empaqueta el worker y le pasamos su URL.
+import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+import { ApiError, connectRealtime, createReport, fetchResumen } from './api'
+import {
+  COLONIA_HIT_LAYER,
+  COLONIA_LAYERS,
+  addBoundaryLayers,
+  coloniaAt,
+  setSelectedColonia,
+  toColonia,
+} from './boundaries-layer'
+import { MAP_MAX_BOUNDS, MAP_MIN_ZOOM, MAP_STYLE_URL, ZMG_CENTER, ZMG_ZOOM } from './config'
+import { LocationError, getPosition, isInsideZmg } from './geolocation'
+import { LayerControls } from './layer-controls'
+import { RESUMEN_LAYERS, addResumenLayer, setLayersVisible, showColoniaPopup } from './reports-layer'
+import { ResumenStore } from './resumen-store'
+import type { Colonia, ReportStatus } from './types'
 
-/** Capas que prende/apaga el control 🔢. */
-export const RESUMEN_LAYERS = ['resumen-circulo', 'resumen-numero'] as const
+// Tras reportar, evita reportes repetidos por doble toque o impaciencia.
+// El límite real lo pone la API; esto solo cuida al usuario honesto.
+const REPORT_COOLDOWN_MS = 60_000
 
-const estadoColor: ExpressionSpecification = [
-  'match', ['get', 'estado'],
-  'no', STATUS_COLORS.no,
-  'baja', STATUS_COLORS.baja,
-  STATUS_COLORS.ok,
-]
+// Los reportes vencidos solo desaparecen al volver a pedir el resumen
+const RESUMEN_REFRESH_MS = 120_000
 
-/**
- * Un círculo por colonia con el número de reportes vigentes, del color del
- * estado que más se reporta. El círculo va en un punto interior de la colonia,
- * no donde estaba nadie. Además tiñe el polígono de la colonia (feature-state).
- */
-export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => void {
-  map.addSource(SOURCE, {
-    type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] },
-  })
+const statusEl = document.querySelector<HTMLElement>('#map-status')!
+const panel = document.querySelector<HTMLElement>('#report-panel')!
+const reportButtons = panel.querySelectorAll<HTMLButtonElement>('[data-status]')
+const reportMsg = document.querySelector<HTMLElement>('#report-msg')!
+const reportTarget = document.querySelector<HTMLElement>('#report-target')!
 
-  map.addLayer({
-    id: 'resumen-circulo',
-    type: 'circle',
-    source: SOURCE,
-    paint: {
-      'circle-color': estadoColor,
-      // Crece con el número de reportes, sin tapar la colonia
-      'circle-radius': ['interpolate', ['linear'], ['get', 'total'], 1, 11, 10, 15, 50, 22],
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#fff',
-    },
-  })
+const setStatus = (text: string) => {
+  statusEl.textContent = text
+}
 
-  map.addLayer({
-    id: 'resumen-numero',
-    type: 'symbol',
-    source: SOURCE,
-    layout: {
-      'text-field': ['case', ['>', ['get', 'total'], 99], '99+', ['to-string', ['get', 'total']]],
-      'text-font': ['Noto Sans Regular'],
-      'text-size': 12,
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-    },
-    paint: {
-      // Sobre amarillo el blanco casi no se lee
-      'text-color': ['match', ['get', 'estado'], 'baja', '#1d2327', '#fff'],
-    },
-  })
+setWorkerUrl(workerUrl)
 
-  map.on('mouseenter', 'resumen-circulo', () => (map.getCanvas().style.cursor = 'pointer'))
-  map.on('mouseleave', 'resumen-circulo', () => (map.getCanvas().style.cursor = ''))
+const map = new MapLibreMap({
+  container: 'map',
+  style: MAP_STYLE_URL,
+  center: ZMG_CENTER,
+  zoom: ZMG_ZOOM,
+  minZoom: MAP_MIN_ZOOM,
+  maxBounds: MAP_MAX_BOUNDS,
+  attributionControl: { compact: true },
+})
 
-  // Colonias teñidas ahora mismo, para quitar el color a las que ya no tienen reportes
-  const tenidas = new Set<number>()
+const store = new ResumenStore()
+let render: ReturnType<typeof addResumenLayer> | null = null
+const refresh = () => render?.(store.toGeoJSON())
 
-  const syncTinte = (data: ResumenCollection) => {
-    const siguientes = new Set<number>()
-    for (const f of data.features) {
-      const id = f.properties.colonia_id
-      siguientes.add(id)
-      map.setFeatureState(
-        { source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id },
-        { estado: f.properties.estado },
-      )
-    }
-    for (const id of tenidas) {
-      if (!siguientes.has(id)) {
-        map.removeFeatureState({ source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id }, 'estado')
-      }
-    }
-    tenidas.clear()
-    siguientes.forEach((id) => tenidas.add(id))
+// ─── Ubicación del usuario (solo en esta pantalla, no se envía) ───
+
+let userMarker: Marker | null = null
+
+function showUser(lng: number, lat: number): void {
+  if (!userMarker) {
+    const el = document.createElement('div')
+    el.className = 'user-dot'
+    el.setAttribute('aria-label', 'Tu ubicación')
+    userMarker = new Marker({ element: el })
   }
+  userMarker.setLngLat([lng, lat]).addTo(map)
+}
 
-  // Agrupa varias actualizaciones en un solo setData por frame
-  const source = map.getSource<GeoJSONSource>(SOURCE)!
-  let pending: ResumenCollection | null = null
-  return (data) => {
-    if (!pending) requestAnimationFrame(() => {
-      if (pending) {
-        source.setData(pending)
-        syncTinte(pending)
-      }
-      pending = null
+async function locateMe(button: HTMLButtonElement): Promise<void> {
+  button.disabled = true
+  try {
+    const { coords } = await getPosition()
+    showUser(coords.longitude, coords.latitude)
+    map.flyTo({ center: [coords.longitude, coords.latitude], zoom: Math.max(map.getZoom(), 15) })
+  } catch (err) {
+    setStatus(err instanceof LocationError ? err.message : 'No pudimos obtener tu ubicación.')
+  } finally {
+    button.disabled = false
+  }
+}
+
+/** Espera a que el mapa termine de moverse y de cargar tiles (con tope por si ya estaba quieto). */
+function waitIdle(timeoutMs = 4_000): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(resolve, timeoutMs)
+    map.once('idle', () => {
+      window.clearTimeout(timer)
+      resolve()
     })
-    pending = data
+    map.triggerRepaint()
+  })
+}
+
+// ─── Controles ───
+
+map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+map.addControl(
+  new LayerControls()
+    .toggle({
+      icon: '🔢',
+      label: 'Mostrar u ocultar el número de reportes por colonia',
+      initial: true,
+      onChange: (on) => setLayersVisible(map, RESUMEN_LAYERS, on),
+    })
+    .toggle({
+      icon: '🏘️',
+      label: 'Mostrar u ocultar colonias',
+      initial: true,
+      onChange: (on) => setLayersVisible(map, COLONIA_LAYERS, on),
+    })
+    .action({ icon: '📍', label: 'Ir a mi ubicación', onClick: locateMe }),
+  'top-right',
+)
+
+// Los controles de abajo (atribución) quedan por encima del panel de reportes
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--panel-h', `${panel.offsetHeight}px`)
+}).observe(panel)
+
+// ─── Colonia elegida a mano ───
+
+// Si hay una colonia elegida tocando el mapa, se reporta ahí sin pedir GPS
+let selected: Colonia | null = null
+
+function selectColonia(colonia: Colonia | null): void {
+  selected = colonia
+  setSelectedColonia(map, colonia?.id ?? null)
+
+  if (!colonia) {
+    reportTarget.hidden = true
+    reportTarget.replaceChildren()
+    return
+  }
+
+  const label = document.createElement('span')
+  label.textContent = `Vas a reportar en ${colonia.nombre}.`
+  const reset = document.createElement('button')
+  reset.type = 'button'
+  reset.className = 'report-target-reset'
+  reset.textContent = 'Usar mi ubicación'
+  reset.addEventListener('click', () => selectColonia(null))
+  reportTarget.replaceChildren(label, ' ', reset)
+  reportTarget.hidden = false
+}
+
+// ─── Reportar ───
+
+function setReportEnabled(enabled: boolean): void {
+  reportButtons.forEach((b) => (b.disabled = !enabled))
+}
+
+/** Colonia del usuario según su GPS. La ubicación se usa aquí y no se envía. */
+async function coloniaFromGps(): Promise<Colonia | null> {
+  reportMsg.textContent = 'Obteniendo tu ubicación…'
+  const { coords } = await getPosition()
+  const { longitude, latitude } = coords
+
+  if (!isInsideZmg(longitude, latitude)) {
+    throw new LocationError('Por ahora wawhere solo funciona en la zona metropolitana de Guadalajara.')
+  }
+
+  showUser(longitude, latitude)
+  reportMsg.textContent = 'Buscando tu colonia…'
+  // Los tiles de colonias tienen que estar en pantalla para consultarlos
+  map.jumpTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 15) })
+  await waitIdle()
+  return coloniaAt(map, [longitude, latitude])
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof LocationError) return err.message
+  if (err instanceof ApiError && err.status === 422) {
+    return 'Esa colonia está fuera de la zona metropolitana de Guadalajara.'
+  }
+  if (err instanceof ApiError && err.status === 429) {
+    return 'Enviaste varios reportes seguidos. Intenta de nuevo en unos minutos.'
+  }
+  return 'No se pudo enviar tu reporte. Intenta de nuevo.'
+}
+
+async function report(status: ReportStatus): Promise<void> {
+  setReportEnabled(false)
+  reportMsg.className = 'report-msg'
+  try {
+    const colonia = selected ?? (await coloniaFromGps())
+
+    if (!colonia) {
+      reportMsg.textContent = 'No encontramos tu colonia. Tócala en el mapa y vuelve a elegir cómo está el agua.'
+      reportMsg.classList.add('report-msg--error')
+      setReportEnabled(true)
+      return
+    }
+
+    reportMsg.textContent = 'Enviando…'
+    await createReport({ colonia_id: colonia.id, status })
+
+    // El WebSocket también manda el conteo nuevo; esto cubre el caso de que esté desconectado
+    void loadResumen()
+    selectColonia(null)
+
+    reportMsg.textContent = `Gracias. Tu reporte ya cuenta en ${colonia.nombre}. ¿No es tu colonia? Tócala en el mapa y reporta de nuevo en un minuto.`
+    reportMsg.classList.add('report-msg--ok')
+    window.setTimeout(() => setReportEnabled(true), REPORT_COOLDOWN_MS)
+  } catch (err) {
+    console.error(err)
+    reportMsg.textContent = errorMessage(err)
+    reportMsg.classList.add('report-msg--error')
+    setReportEnabled(true)
   }
 }
 
-export function setLayersVisible(map: MapLibreMap, ids: readonly string[], visible: boolean): void {
-  for (const id of ids) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
+reportButtons.forEach((btn) =>
+  btn.addEventListener('click', () => report(btn.dataset.status as ReportStatus)),
+)
+
+// ─── Datos ───
+
+let controller: AbortController | null = null
+
+async function loadResumen(): Promise<void> {
+  controller?.abort()
+  controller = new AbortController()
+  try {
+    store.replaceAll(await fetchResumen(controller.signal))
+    refresh()
+    setStatus('')
+  } catch (err) {
+    if ((err as DOMException).name === 'AbortError') return
+    console.error(err)
+    setStatus('No se pudieron cargar los reportes.')
+  }
 }
 
-// ─── Popup de colonia ───
+map.on('load', () => {
+  // Primero colonias y límite estatal para que queden debajo del resumen
+  addBoundaryLayers(map)
+  render = addResumenLayer(map)
+  setReportEnabled(true)
+  void loadResumen()
 
-const popup = new Popup({ closeButton: false, offset: 10, maxWidth: '240px' })
-const HORAS = Math.round(REPORT_EXPIRY_MS / 3_600_000)
+  // Tocar una colonia muestra sus conteos y la deja elegida para reportar
+  map.on('click', (e) => {
+    const feature = map.queryRenderedFeatures(e.point, { layers: [COLONIA_HIT_LAYER] })[0]
+    const colonia = feature ? toColonia(feature) : null
+    if (!colonia) return
+    selectColonia(colonia)
+    showColoniaPopup(map, e.lngLat, colonia, store.get(colonia.id)?.properties)
+  })
 
-export function showColoniaPopup(
-  map: MapLibreMap,
-  lngLat: LngLatLike,
-  colonia: Colonia,
-  resumen?: ColoniaResumenProps,
-): void {
-  popup.setLngLat(lngLat).setDOMContent(popupContent(colonia, resumen)).addTo(map)
-}
+  // Tiempo real: cuando alguien reporta, llega el conteo nuevo de su colonia
+  connectRealtime({
+    onColoniaUpdate: (feature) => {
+      store.upsert(feature)
+      refresh()
+    },
+    onReconnect: () => void loadResumen(),
+  })
 
-// DOM con textContent: nunca se arma HTML con datos
-function popupContent(colonia: Colonia, r?: ColoniaResumenProps): HTMLElement {
-  const el = document.createElement('div')
-  el.className = 'report-popup'
-
-  const title = document.createElement('strong')
-  title.textContent = colonia.nombre || 'Colonia sin nombre'
-  el.append(title)
-
-  if (colonia.municipio) {
-    const muni = document.createElement('p')
-    muni.textContent = colonia.municipio
-    el.append(muni)
-  }
-
-  if (!r) {
-    const empty = document.createElement('p')
-    empty.textContent = `Sin reportes en las últimas ${HORAS} h.`
-    el.append(empty)
-    return el
-  }
-
-  const rows: [ReportStatus, number][] = [
-    ['no', r.sin_agua],
-    ['baja', r.baja_presion],
-    ['ok', r.con_agua],
-  ]
-  const list = document.createElement('ul')
-  list.className = 'popup-conteo'
-  for (const [status, count] of rows) {
-    const li = document.createElement('li')
-    const dot = document.createElement('span')
-    dot.className = 'dot'
-    dot.style.background = STATUS_COLORS[status]
-    const label = document.createElement('span')
-    label.textContent = STATUS_LABELS[status]
-    const n = document.createElement('b')
-    n.textContent = String(count)
-    li.append(dot, label, n)
-    list.append(li)
-  }
-  el.append(list)
-
-  const foot = document.createElement('p')
-  foot.className = 'popup-nota'
-  foot.textContent = `${r.total} ${r.total === 1 ? 'reporte' : 'reportes'} en las últimas ${HORAS} h`
-  el.append(foot)
-
-  return el
-}
+  window.setInterval(() => {
+    if (!document.hidden) void loadResumen()
+  }, RESUMEN_REFRESH_MS)
+})
