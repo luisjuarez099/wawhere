@@ -1,227 +1,167 @@
-import 'maplibre-gl/dist/maplibre-gl.css'
-import '../shared/tokens.css'
-import './map.css'
+import { Popup } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
+import { COLONIA_SOURCE, COLONIA_SOURCE_LAYER } from './boundaries-layer'
+import { REPORT_EXPIRY_MS, STATUS_COLORS, STATUS_LABELS } from './config'
+import type { Colonia, ColoniaResumenProps, ReportStatus, ResumenCollection } from './types'
 
-import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
-// MapLibre v6 busca su worker junto a su propio .mjs; con Vite (pre-bundle y build)
-// ese archivo no existe, así que Vite empaqueta el worker y le pasamos su URL.
-import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { connectRealtime, createReport, fetchReports } from './api'
-import { COLONIA_LAYERS, addBoundaryLayers } from './boundaries-layer'
-import { MAP_MAX_BOUNDS, MAP_MIN_ZOOM, MAP_STYLE_URL, REPORT_EXPIRY_MS, ZMG_CENTER, ZMG_ZOOM } from './config'
-import { LocationError, getPosition, isInsideZmg } from './geolocation'
-import { LayerControls } from './layer-controls'
-import { ReportStore } from './report-store'
-import { LAYERS, addReportsLayer, setLayersVisible } from './reports-layer'
-import type { Bounds, ReportStatus } from './types'
+const SOURCE = 'resumen'
 
-// Tras reportar, evita reportes repetidos por doble toque o impaciencia.
-// El límite real tiene que ponerlo la API; esto solo cuida al usuario honesto.
-const REPORT_COOLDOWN_MS = 60_000
+/** Capas que prende/apaga el control 🔢. */
+export const RESUMEN_LAYERS = ['resumen-circulo', 'resumen-numero'] as const
 
-const statusEl = document.querySelector<HTMLElement>('#map-status')!
-const panel = document.querySelector<HTMLElement>('#report-panel')!
-const reportButtons = panel.querySelectorAll<HTMLButtonElement>('[data-status]')
-const reportMsg = document.querySelector<HTMLElement>('#report-msg')!
+const estadoColor: ExpressionSpecification = [
+  'match', ['get', 'estado'],
+  'no', STATUS_COLORS.no,
+  'baja', STATUS_COLORS.baja,
+  STATUS_COLORS.ok,
+]
 
-const setStatus = (text: string) => {
-  statusEl.textContent = text
-}
-
-setWorkerUrl(workerUrl)
-
-const map = new MapLibreMap({
-  container: 'map',
-  style: MAP_STYLE_URL,
-  center: ZMG_CENTER,
-  zoom: ZMG_ZOOM,
-  minZoom: MAP_MIN_ZOOM,
-  maxBounds: MAP_MAX_BOUNDS,
-  attributionControl: { compact: true },
-})
-
-const store = new ReportStore(REPORT_EXPIRY_MS)
-let render: ReturnType<typeof addReportsLayer> | null = null
-const refresh = () => render?.(store.toGeoJSON())
-
-// ─── Ubicación del usuario ───
-
-let userMarker: Marker | null = null
-
-function showUser(lng: number, lat: number): void {
-  if (!userMarker) {
-    const el = document.createElement('div')
-    el.className = 'user-dot'
-    el.setAttribute('aria-label', 'Tu ubicación')
-    userMarker = new Marker({ element: el })
-  }
-  userMarker.setLngLat([lng, lat]).addTo(map)
-}
-
-async function locateMe(button: HTMLButtonElement): Promise<void> {
-  button.disabled = true
-  try {
-    const { coords } = await getPosition()
-    showUser(coords.longitude, coords.latitude)
-    map.flyTo({ center: [coords.longitude, coords.latitude], zoom: Math.max(map.getZoom(), 15) })
-  } catch (err) {
-    setStatus(err instanceof LocationError ? err.message : 'No pudimos obtener tu ubicación.')
-  } finally {
-    button.disabled = false
-  }
-}
-
-// ─── Controles ───
-
-map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
-map.addControl(
-  new LayerControls()
-    .toggle({
-      icon: '🔥',
-      label: 'Mostrar u ocultar zonas de calor',
-      initial: true,
-      onChange: (on) => setLayersVisible(map, LAYERS.heatmap, on),
-    })
-    .toggle({
-      icon: '🏘️',
-      label: 'Mostrar u ocultar colonias',
-      initial: true,
-      onChange: (on) => setLayersVisible(map, COLONIA_LAYERS, on),
-    })
-    .toggle({
-      icon: '📌',
-      label: 'Mostrar u ocultar reportes individuales',
-      initial: true,
-      onChange: (on) => setLayersVisible(map, LAYERS.points, on),
-    })
-    .action({ icon: '📍', label: 'Ir a mi ubicación', onClick: locateMe }),
-  'top-right',
-)
-
-// Los controles de abajo (atribución) quedan por encima del panel de reportes
-new ResizeObserver(() => {
-  document.documentElement.style.setProperty('--panel-h', `${panel.offsetHeight}px`)
-}).observe(panel)
-
-// ─── Reportar ───
-
-function setReportEnabled(enabled: boolean): void {
-  reportButtons.forEach((b) => (b.disabled = !enabled))
-}
-
-async function report(status: ReportStatus): Promise<void> {
-  setReportEnabled(false)
-  reportMsg.className = 'report-msg'
-  try {
-    reportMsg.textContent = 'Obteniendo tu ubicación…'
-    const { coords } = await getPosition()
-    const { longitude, latitude } = coords
-
-    if (!isInsideZmg(longitude, latitude)) {
-      reportMsg.textContent = 'Por ahora wawhere solo funciona en la zona metropolitana de Guadalajara.'
-      setReportEnabled(true)
-      return
-    }
-
-    showUser(longitude, latitude)
-    reportMsg.textContent = 'Enviando…'
-    // La API busca la colonia con la ubicación exacta y guarda las coordenadas redondeadas (~100 m)
-    const saved = await createReport({ latitude, longitude, status })
-
-    // El WebSocket también lo va a mandar; el store lo deduplica por id
-    store.upsert([saved])
-    refresh()
-    map.easeTo({ center: [saved.longitude, saved.latitude], zoom: Math.max(map.getZoom(), 14) })
-
-    reportMsg.textContent = saved.colonia
-      ? `Gracias. Tu reporte en ${saved.colonia} ya aparece en el mapa.`
-      : 'Gracias. Tu reporte ya aparece en el mapa.'
-    reportMsg.classList.add('report-msg--ok')
-    window.setTimeout(() => setReportEnabled(true), REPORT_COOLDOWN_MS)
-  } catch (err) {
-    console.error(err)
-    reportMsg.textContent =
-      err instanceof LocationError ? err.message : 'No se pudo enviar tu reporte. Intenta de nuevo.'
-    reportMsg.classList.add('report-msg--error')
-    setReportEnabled(true)
-  }
-}
-
-reportButtons.forEach((btn) =>
-  btn.addEventListener('click', () => report(btn.dataset.status as ReportStatus)),
-)
-
-// ─── Datos ───
-
-map.on('load', () => {
-  // Primero colonias y límite estatal para que queden debajo de los reportes
-  addBoundaryLayers(map)
-  render = addReportsLayer(map)
-  setReportEnabled(true)
-
-  // Carga por viewport: pide un área 50% más grande que la vista y no vuelve
-  // a pedir mientras el usuario se mueva dentro de ella.
-  let loaded: Bounds | null = null
-  let controller: AbortController | null = null
-  let debounce: number | undefined
-
-  const load = async (force = false) => {
-    const view = viewBounds()
-    if (!force && loaded && contains(loaded, view)) return
-
-    controller?.abort()
-    controller = new AbortController()
-    const area = pad(view, 0.5)
-    try {
-      store.upsert(await fetchReports(area, controller.signal))
-      loaded = area
-      store.prune()
-      refresh()
-      setStatus('')
-    } catch (err) {
-      if ((err as DOMException).name === 'AbortError') return
-      console.error(err)
-      setStatus('No se pudieron cargar los reportes.')
-    }
-  }
-
-  map.on('moveend', () => {
-    window.clearTimeout(debounce)
-    debounce = window.setTimeout(load, 250)
+/**
+ * Un círculo por colonia con el número de reportes vigentes, del color del
+ * estado que más se reporta. El círculo va en un punto interior de la colonia,
+ * no donde estaba nadie. Además tiñe el polígono de la colonia (feature-state).
+ */
+export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => void {
+  map.addSource(SOURCE, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
   })
-  load()
 
-  // Tiempo real: lo que reporta cualquiera aparece aquí al instante
-  connectRealtime({
-    onReport: (r) => {
-      store.upsert([r])
-      refresh()
+  map.addLayer({
+    id: 'resumen-circulo',
+    type: 'circle',
+    source: SOURCE,
+    paint: {
+      'circle-color': estadoColor,
+      // Crece con el número de reportes, sin tapar la colonia
+      'circle-radius': ['interpolate', ['linear'], ['get', 'total'], 1, 11, 10, 15, 50, 22],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#fff',
     },
-    onReconnect: () => load(true),
   })
 
-  // Quita reportes vencidos sin esperar a que el usuario mueva el mapa
-  window.setInterval(() => {
-    if (!document.hidden && store.prune()) refresh()
-  }, 60_000)
-})
+  map.addLayer({
+    id: 'resumen-numero',
+    type: 'symbol',
+    source: SOURCE,
+    layout: {
+      'text-field': ['case', ['>', ['get', 'total'], 99], '99+', ['to-string', ['get', 'total']]],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': 12,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      // Sobre amarillo el blanco casi no se lee
+      'text-color': ['match', ['get', 'estado'], 'baja', '#1d2327', '#fff'],
+    },
+  })
 
-function viewBounds(): Bounds {
-  const b = map.getBounds()
-  return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }
+  map.on('mouseenter', 'resumen-circulo', () => (map.getCanvas().style.cursor = 'pointer'))
+  map.on('mouseleave', 'resumen-circulo', () => (map.getCanvas().style.cursor = ''))
+
+  // Colonias teñidas ahora mismo, para quitar el color a las que ya no tienen reportes
+  const tenidas = new Set<number>()
+
+  const syncTinte = (data: ResumenCollection) => {
+    const siguientes = new Set<number>()
+    for (const f of data.features) {
+      const id = f.properties.colonia_id
+      siguientes.add(id)
+      map.setFeatureState(
+        { source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id },
+        { estado: f.properties.estado },
+      )
+    }
+    for (const id of tenidas) {
+      if (!siguientes.has(id)) {
+        map.removeFeatureState({ source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id }, 'estado')
+      }
+    }
+    tenidas.clear()
+    siguientes.forEach((id) => tenidas.add(id))
+  }
+
+  // Agrupa varias actualizaciones en un solo setData por frame
+  const source = map.getSource<GeoJSONSource>(SOURCE)!
+  let pending: ResumenCollection | null = null
+  return (data) => {
+    if (!pending) requestAnimationFrame(() => {
+      if (pending) {
+        source.setData(pending)
+        syncTinte(pending)
+      }
+      pending = null
+    })
+    pending = data
+  }
 }
 
-function pad(b: Bounds, ratio: number): Bounds {
-  const dx = (b.east - b.west) * ratio
-  const dy = (b.north - b.south) * ratio
-  return { west: b.west - dx, south: b.south - dy, east: b.east + dx, north: b.north + dy }
+export function setLayersVisible(map: MapLibreMap, ids: readonly string[], visible: boolean): void {
+  for (const id of ids) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
 }
 
-function contains(outer: Bounds, inner: Bounds): boolean {
-  return (
-    inner.west >= outer.west &&
-    inner.east <= outer.east &&
-    inner.south >= outer.south &&
-    inner.north <= outer.north
-  )
+// ─── Popup de colonia ───
+
+const popup = new Popup({ closeButton: false, offset: 10, maxWidth: '240px' })
+const HORAS = Math.round(REPORT_EXPIRY_MS / 3_600_000)
+
+export function showColoniaPopup(
+  map: MapLibreMap,
+  lngLat: LngLatLike,
+  colonia: Colonia,
+  resumen?: ColoniaResumenProps,
+): void {
+  popup.setLngLat(lngLat).setDOMContent(popupContent(colonia, resumen)).addTo(map)
+}
+
+// DOM con textContent: nunca se arma HTML con datos
+function popupContent(colonia: Colonia, r?: ColoniaResumenProps): HTMLElement {
+  const el = document.createElement('div')
+  el.className = 'report-popup'
+
+  const title = document.createElement('strong')
+  title.textContent = colonia.nombre || 'Colonia sin nombre'
+  el.append(title)
+
+  if (colonia.municipio) {
+    const muni = document.createElement('p')
+    muni.textContent = colonia.municipio
+    el.append(muni)
+  }
+
+  if (!r) {
+    const empty = document.createElement('p')
+    empty.textContent = `Sin reportes en las últimas ${HORAS} h.`
+    el.append(empty)
+    return el
+  }
+
+  const rows: [ReportStatus, number][] = [
+    ['no', r.sin_agua],
+    ['baja', r.baja_presion],
+    ['ok', r.con_agua],
+  ]
+  const list = document.createElement('ul')
+  list.className = 'popup-conteo'
+  for (const [status, count] of rows) {
+    const li = document.createElement('li')
+    const dot = document.createElement('span')
+    dot.className = 'dot'
+    dot.style.background = STATUS_COLORS[status]
+    const label = document.createElement('span')
+    label.textContent = STATUS_LABELS[status]
+    const n = document.createElement('b')
+    n.textContent = String(count)
+    li.append(dot, label, n)
+    list.append(li)
+  }
+  el.append(list)
+
+  const foot = document.createElement('p')
+  foot.className = 'popup-nota'
+  foot.textContent = `${r.total} ${r.total === 1 ? 'reporte' : 'reportes'} en las últimas ${HORAS} h`
+  el.append(foot)
+
+  return el
 }

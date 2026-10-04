@@ -1,8 +1,24 @@
-import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
-import { API_URL } from './config'
+import type {
+  ExpressionSpecification,
+  LngLatLike,
+  MapGeoJSONFeature,
+  Map as MapLibreMap,
+} from 'maplibre-gl'
+import { API_URL, STATUS_COLORS } from './config'
+import type { Colonia } from './types'
+
+export const COLONIA_SOURCE = 'colonias'
+export const COLONIA_SOURCE_LAYER = 'colonias'
 
 /** Capas que prende/apaga el control 🏘️. */
 export const COLONIA_LAYERS = ['colonias-fill', 'colonias-line', 'colonias-label'] as const
+
+/**
+ * Capa invisible que siempre está prendida: sirve para saber en qué colonia
+ * cae un punto o un clic aunque el usuario haya ocultado las colonias.
+ */
+export const COLONIA_HIT_LAYER = 'colonias-hit'
+const SELECTED_LAYER = 'colonias-selected'
 
 // Color por colonia según su id, así las vecinas casi siempre quedan de distinto tono.
 // Tonos suaves sin rojo, amarillo ni verde para no confundirse con los estados del agua.
@@ -18,15 +34,24 @@ const coloniaColor: ExpressionSpecification = [
   '#b8c4cc',
 ]
 
+// reports-layer.ts pone el feature-state "estado" en las colonias con reportes vigentes
+const tieneEstado: ExpressionSpecification = ['to-boolean', ['feature-state', 'estado']]
+const estadoColor: ExpressionSpecification = [
+  'match', ['feature-state', 'estado'],
+  'no', STATUS_COLORS.no,
+  'baja', STATUS_COLORS.baja,
+  STATUS_COLORS.ok,
+]
+
 /**
  * Colonias (vector tiles de wawhere-api, generados por PostGIS) y el límite de Jalisco.
- * Van debajo de los heatmaps y de los nombres del mapa base: son contexto, no protagonistas.
+ * Las colonias con reportes se tiñen con el color de su estado.
  */
 export function addBoundaryLayers(map: MapLibreMap): void {
   const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
   const apiBase = API_URL || window.location.origin
 
-  map.addSource('colonias', {
+  map.addSource(COLONIA_SOURCE, {
     type: 'vector',
     tiles: [`${apiBase}/api/tiles/colonias/{z}/{x}/{y}.pbf`],
     // Debe coincidir con MIN_ZOOM / MAX_ZOOM de wawhere-api/app/routes/tiles.py
@@ -38,12 +63,23 @@ export function addBoundaryLayers(map: MapLibreMap): void {
     {
       id: 'colonias-fill',
       type: 'fill',
-      source: 'colonias',
-      'source-layer': 'colonias',
+      source: COLONIA_SOURCE,
+      'source-layer': COLONIA_SOURCE_LAYER,
       paint: {
-        'fill-color': coloniaColor,
-        'fill-opacity': 0.2,
+        'fill-color': ['case', tieneEstado, estadoColor, coloniaColor],
+        'fill-opacity': ['case', tieneEstado, 0.38, 0.2],
       },
+    },
+    firstLabel,
+  )
+
+  map.addLayer(
+    {
+      id: COLONIA_HIT_LAYER,
+      type: 'fill',
+      source: COLONIA_SOURCE,
+      'source-layer': COLONIA_SOURCE_LAYER,
+      paint: { 'fill-color': '#000', 'fill-opacity': 0 },
     },
     firstLabel,
   )
@@ -52,8 +88,8 @@ export function addBoundaryLayers(map: MapLibreMap): void {
     {
       id: 'colonias-line',
       type: 'line',
-      source: 'colonias',
-      'source-layer': 'colonias',
+      source: COLONIA_SOURCE,
+      'source-layer': COLONIA_SOURCE_LAYER,
       paint: {
         'line-color': '#6f8296',
         'line-opacity': 0.45,
@@ -62,6 +98,19 @@ export function addBoundaryLayers(map: MapLibreMap): void {
     },
     firstLabel,
   )
+
+  // Contorno de la colonia elegida para reportar
+  map.addLayer({
+    id: SELECTED_LAYER,
+    type: 'line',
+    source: COLONIA_SOURCE,
+    'source-layer': COLONIA_SOURCE_LAYER,
+    filter: ['==', ['id'], -1],
+    paint: {
+      'line-color': '#1d2327',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 15, 3],
+    },
+  })
 
   map.addSource('jalisco', { type: 'geojson', data: `${import.meta.env.BASE_URL}jalisco.geojson` })
 
@@ -84,8 +133,8 @@ export function addBoundaryLayers(map: MapLibreMap): void {
   map.addLayer({
     id: 'colonias-label',
     type: 'symbol',
-    source: 'colonias',
-    'source-layer': 'colonias',
+    source: COLONIA_SOURCE,
+    'source-layer': COLONIA_SOURCE_LAYER,
     minzoom: 14,
     layout: {
       'text-field': ['get', 'nombre'],
@@ -99,4 +148,38 @@ export function addBoundaryLayers(map: MapLibreMap): void {
       'text-halo-width': 1.5,
     },
   })
+}
+
+export function setSelectedColonia(map: MapLibreMap, id: number | null): void {
+  map.setFilter(SELECTED_LAYER, ['==', ['id'], id ?? -1])
+}
+
+export function toColonia(feature: MapGeoJSONFeature): Colonia | null {
+  if (feature.id == null) return null
+  return {
+    id: Number(feature.id),
+    nombre: String(feature.properties?.nombre ?? ''),
+    municipio: String(feature.properties?.municipio ?? ''),
+  }
+}
+
+/**
+ * Colonia en un punto, buscada en los tiles que ya están en pantalla: la ubicación
+ * exacta no sale del navegador. Si el punto cae en una calle o en un hueco entre
+ * polígonos, busca en cuadros cada vez más grandes (a zoom 15, 45 px ≈ 200 m).
+ * El punto tiene que estar en pantalla y con los tiles cargados.
+ */
+export function coloniaAt(map: MapLibreMap, lngLat: LngLatLike): Colonia | null {
+  const p = map.project(lngLat)
+  const exact = map.queryRenderedFeatures(p, { layers: [COLONIA_HIT_LAYER] })[0]
+  if (exact) return toColonia(exact)
+
+  for (const r of [10, 25, 45]) {
+    const near = map.queryRenderedFeatures(
+      [[p.x - r, p.y - r], [p.x + r, p.y + r]],
+      { layers: [COLONIA_HIT_LAYER] },
+    )[0]
+    if (near) return toColonia(near)
+  }
+  return null
 }

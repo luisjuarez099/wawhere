@@ -1,97 +1,96 @@
 import { Popup } from 'maplibre-gl'
-import type {
-  ExpressionSpecification,
-  GeoJSONSource,
-  HeatmapLayerSpecification,
-  Map as MapLibreMap,
-} from 'maplibre-gl'
-import type { FeatureCollection, Point } from 'geojson'
-import { STATUS_COLORS, STATUS_LABELS } from './config'
-import type { ReportProps } from './report-store'
-import type { ReportStatus } from './types'
+import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
+import { COLONIA_SOURCE, COLONIA_SOURCE_LAYER } from './boundaries-layer'
+import { REPORT_EXPIRY_MS, STATUS_COLORS, STATUS_LABELS } from './config'
+import type { Colonia, ColoniaResumenProps, ReportStatus, ResumenCollection } from './types'
 
-const SOURCE = 'reports'
+const SOURCE = 'resumen'
 
-/** Capas que prende/apaga cada control. */
-export const LAYERS = {
-  heatmap: ['heat-baja', 'heat-no'],
-  points: ['report-points'],
-} as const
+/** Capas que prende/apaga el control 🔢. */
+export const RESUMEN_LAYERS = ['resumen-circulo', 'resumen-numero'] as const
+
+const estadoColor: ExpressionSpecification = [
+  'match', ['get', 'estado'],
+  'no', STATUS_COLORS.no,
+  'baja', STATUS_COLORS.baja,
+  STATUS_COLORS.ok,
+]
 
 /**
- * Rampa de color de un heatmap: transparente donde no hay reportes y más
- * intenso entre más reportes hay juntos. `rgb` es el color base, `deep` el del centro.
+ * Un círculo por colonia con el número de reportes vigentes, del color del
+ * estado que más se reporta. El círculo va en un punto interior de la colonia,
+ * no donde estaba nadie. Además tiñe el polígono de la colonia (feature-state).
  */
-function heatColor(rgb: string, deep: string): ExpressionSpecification {
-  return [
-    'interpolate', ['linear'], ['heatmap-density'],
-    0, `rgba(${rgb}, 0)`,
-    0.15, `rgba(${rgb}, 0.25)`,
-    0.4, `rgba(${rgb}, 0.5)`,
-    0.7, `rgba(${rgb}, 0.7)`,
-    1, `rgba(${deep}, 0.85)`,
-  ]
-}
-
-function heatmapLayer(id: string, status: ReportStatus, color: ExpressionSpecification): HeatmapLayerSpecification {
-  return {
-    id,
-    type: 'heatmap',
-    source: SOURCE,
-    filter: ['==', ['get', 'status'], status],
-    paint: {
-      'heatmap-weight': 1,
-      // A más zoom, cada reporte pesa más para que una colonia con pocos reportes se siga viendo
-      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 15, 1.6],
-      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 14, 15, 36],
-      // De cerca se baja la opacidad para que se lean las calles y los puntos
-      'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.85, 17, 0.45],
-      'heatmap-color': color,
-    },
-  }
-}
-
-/**
- * Reportes como una sola fuente GeoJSON (sin clustering: el heatmap necesita
- * cada reporte por separado). Todo se dibuja en WebGL, así que aguanta miles de puntos.
- */
-export function addReportsLayer(map: MapLibreMap): (data: FeatureCollection<Point, ReportProps>) => void {
+export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => void {
   map.addSource(SOURCE, {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
   })
 
-  // Los heatmaps van debajo de los nombres de calles y colonias del mapa base
-  const firstLabel = map.getStyle().layers.find((l) => l.type === 'symbol')?.id
-
-  // Amarillo primero y rojo encima: "sin agua" es lo más importante de ver
-  map.addLayer(heatmapLayer('heat-baja', 'baja', heatColor('229, 165, 10', '204, 112, 0')), firstLabel)
-  map.addLayer(heatmapLayer('heat-no', 'no', heatColor('217, 59, 59', '150, 0, 0')), firstLabel)
-
   map.addLayer({
-    id: 'report-points',
+    id: 'resumen-circulo',
     type: 'circle',
     source: SOURCE,
     paint: {
-      'circle-color': ['match', ['get', 'status'],
-        'no', STATUS_COLORS.no,
-        'baja', STATUS_COLORS.baja,
-        STATUS_COLORS.ok,
-      ],
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 3, 13, 5, 16, 9],
-      'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 1, 13, 2],
+      'circle-color': estadoColor,
+      // Crece con el número de reportes, sin tapar la colonia
+      'circle-radius': ['interpolate', ['linear'], ['get', 'total'], 1, 11, 10, 15, 50, 22],
+      'circle-stroke-width': 2,
       'circle-stroke-color': '#fff',
     },
   })
 
-  bindInteractions(map)
+  map.addLayer({
+    id: 'resumen-numero',
+    type: 'symbol',
+    source: SOURCE,
+    layout: {
+      'text-field': ['case', ['>', ['get', 'total'], 99], '99+', ['to-string', ['get', 'total']]],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': 12,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      // Sobre amarillo el blanco casi no se lee
+      'text-color': ['match', ['get', 'estado'], 'baja', '#1d2327', '#fff'],
+    },
+  })
+
+  map.on('mouseenter', 'resumen-circulo', () => (map.getCanvas().style.cursor = 'pointer'))
+  map.on('mouseleave', 'resumen-circulo', () => (map.getCanvas().style.cursor = ''))
+
+  // Colonias teñidas ahora mismo, para quitar el color a las que ya no tienen reportes
+  const tenidas = new Set<number>()
+
+  const syncTinte = (data: ResumenCollection) => {
+    const siguientes = new Set<number>()
+    for (const f of data.features) {
+      const id = f.properties.colonia_id
+      siguientes.add(id)
+      map.setFeatureState(
+        { source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id },
+        { estado: f.properties.estado },
+      )
+    }
+    for (const id of tenidas) {
+      if (!siguientes.has(id)) {
+        map.removeFeatureState({ source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id }, 'estado')
+      }
+    }
+    tenidas.clear()
+    siguientes.forEach((id) => tenidas.add(id))
+  }
 
   // Agrupa varias actualizaciones en un solo setData por frame
   const source = map.getSource<GeoJSONSource>(SOURCE)!
-  let pending: FeatureCollection<Point, ReportProps> | null = null
+  let pending: ResumenCollection | null = null
   return (data) => {
     if (!pending) requestAnimationFrame(() => {
-      if (pending) source.setData(pending)
+      if (pending) {
+        source.setData(pending)
+        syncTinte(pending)
+      }
       pending = null
     })
     pending = data
@@ -102,51 +101,67 @@ export function setLayersVisible(map: MapLibreMap, ids: readonly string[], visib
   for (const id of ids) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
 }
 
-function bindInteractions(map: MapLibreMap): void {
-  const popup = new Popup({ closeButton: false, offset: 10, maxWidth: '240px' })
+// ─── Popup de colonia ───
 
-  map.on('click', 'report-points', (e) => {
-    const feature = e.features?.[0]
-    if (!feature) return
-    const props = feature.properties as ReportProps
-    popup
-      .setLngLat((feature.geometry as Point).coordinates as [number, number])
-      .setDOMContent(popupContent(props))
-      .addTo(map)
-  })
+const popup = new Popup({ closeButton: false, offset: 10, maxWidth: '240px' })
+const HORAS = Math.round(REPORT_EXPIRY_MS / 3_600_000)
 
-  map.on('mouseenter', 'report-points', () => (map.getCanvas().style.cursor = 'pointer'))
-  map.on('mouseleave', 'report-points', () => (map.getCanvas().style.cursor = ''))
+export function showColoniaPopup(
+  map: MapLibreMap,
+  lngLat: LngLatLike,
+  colonia: Colonia,
+  resumen?: ColoniaResumenProps,
+): void {
+  popup.setLngLat(lngLat).setDOMContent(popupContent(colonia, resumen)).addTo(map)
 }
 
-// DOM con textContent: "colonia" viene del usuario, nunca va como HTML
-function popupContent({ status, colonia, created_at }: ReportProps): HTMLElement {
+// DOM con textContent: nunca se arma HTML con datos
+function popupContent(colonia: Colonia, r?: ColoniaResumenProps): HTMLElement {
   const el = document.createElement('div')
   el.className = 'report-popup'
 
   const title = document.createElement('strong')
-  title.textContent = STATUS_LABELS[status] ?? status
-  title.style.color = STATUS_COLORS[status]
+  title.textContent = colonia.nombre || 'Colonia sin nombre'
   el.append(title)
 
-  if (colonia) {
-    const p = document.createElement('p')
-    p.textContent = colonia
-    el.append(p)
+  if (colonia.municipio) {
+    const muni = document.createElement('p')
+    muni.textContent = colonia.municipio
+    el.append(muni)
   }
 
-  const time = document.createElement('time')
-  time.dateTime = created_at
-  time.textContent = timeAgo(created_at)
-  el.append(time)
+  if (!r) {
+    const empty = document.createElement('p')
+    empty.textContent = `Sin reportes en las últimas ${HORAS} h.`
+    el.append(empty)
+    return el
+  }
+
+  const rows: [ReportStatus, number][] = [
+    ['no', r.sin_agua],
+    ['baja', r.baja_presion],
+    ['ok', r.con_agua],
+  ]
+  const list = document.createElement('ul')
+  list.className = 'popup-conteo'
+  for (const [status, count] of rows) {
+    const li = document.createElement('li')
+    const dot = document.createElement('span')
+    dot.className = 'dot'
+    dot.style.background = STATUS_COLORS[status]
+    const label = document.createElement('span')
+    label.textContent = STATUS_LABELS[status]
+    const n = document.createElement('b')
+    n.textContent = String(count)
+    li.append(dot, label, n)
+    list.append(li)
+  }
+  el.append(list)
+
+  const foot = document.createElement('p')
+  foot.className = 'popup-nota'
+  foot.textContent = `${r.total} ${r.total === 1 ? 'reporte' : 'reportes'} en las últimas ${HORAS} h`
+  el.append(foot)
 
   return el
-}
-
-const rtf = new Intl.RelativeTimeFormat('es-MX', { numeric: 'auto' })
-
-function timeAgo(iso: string): string {
-  const minutes = Math.round((Date.parse(iso) - Date.now()) / 60_000)
-  if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute')
-  return rtf.format(Math.round(minutes / 60), 'hour')
 }

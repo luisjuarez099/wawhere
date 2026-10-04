@@ -1,15 +1,17 @@
 import { API_URL } from './config'
-import type { Bounds, RealtimeMessage, Report, ReportCreate } from './types'
+import type { ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection } from './types'
 
-export async function fetchReports(bounds: Bounds, signal?: AbortSignal): Promise<Report[]> {
-  const params = new URLSearchParams({
-    lat_min: bounds.south.toFixed(5),
-    lat_max: bounds.north.toFixed(5),
-    lng_min: bounds.west.toFixed(5),
-    lng_max: bounds.east.toFixed(5),
-  })
-  const res = await fetch(`${API_URL}/api/reports?${params}`, { signal })
-  if (!res.ok) throw new Error(`GET /api/reports → ${res.status}`)
+/** Error HTTP con el status, para mostrar un mensaje distinto según el caso (422, 429…). */
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+  }
+}
+
+/** Conteos por colonia de los reportes vigentes. Es poco dato, así que se pide completo. */
+export async function fetchResumen(signal?: AbortSignal): Promise<ResumenCollection> {
+  const res = await fetch(`${API_URL}/api/reports/resumen`, { signal })
+  if (!res.ok) throw new ApiError(res.status, `GET /api/reports/resumen → ${res.status}`)
   return res.json()
 }
 
@@ -19,7 +21,7 @@ export async function createReport(body: ReportCreate): Promise<Report> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`POST /api/reports → ${res.status}`)
+  if (!res.ok) throw new ApiError(res.status, `POST /api/reports → ${res.status}`)
   return res.json()
 }
 
@@ -29,7 +31,8 @@ function realtimeUrl(): string {
 }
 
 interface RealtimeHandlers {
-  onReport: (report: Report) => void
+  // Conteo actualizado de una colonia después de que alguien reporta
+  onColoniaUpdate: (feature: ColoniaResumen) => void
   // Se llama al (re)conectar: lo que llegó mientras estaba caído se perdió, hay que refrescar
   onReconnect: () => void
 }
@@ -38,7 +41,7 @@ interface RealtimeHandlers {
  * WebSocket con reconexión (backoff exponencial). Se cierra cuando la pestaña
  * está oculta para no gastar batería ni conexiones del servidor.
  */
-export function connectRealtime({ onReport, onReconnect }: RealtimeHandlers): () => void {
+export function connectRealtime({ onColoniaUpdate, onReconnect }: RealtimeHandlers): () => void {
   let ws: WebSocket | null = null
   let retry = 0
   let retryTimer: number | undefined
@@ -58,7 +61,7 @@ export function connectRealtime({ onReport, onReconnect }: RealtimeHandlers): ()
     ws.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data) as RealtimeMessage
-        if (msg.type === 'new_report') onReport(msg.report)
+        if (msg.type === 'colonia_update' && msg.feature) onColoniaUpdate(msg.feature)
       } catch {
         // mensaje inválido: se ignora
       }

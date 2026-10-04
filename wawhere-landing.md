@@ -172,7 +172,7 @@ El cliente está en `src/map/api.ts` y los tipos en `src/map/types.ts` (espejo d
 | Endpoint | Quién lo usa | Qué hace |
 |---|---|---|
 | `GET /api/reports?lat_min&lat_max&lng_min&lng_max` | `fetchReports` al mover el mapa | Reportes vigentes dentro del área visible (+50 % de margen). Sin parámetros devuelve todos los vigentes |
-| `POST /api/reports` | `createReport` al tocar un botón del panel | Crea el reporte. Body: `{ latitude, longitude, status: 'no' \| 'baja' \| 'ok', colonia? }`. Responde `201` con el reporte guardado |
+| `POST /api/reports` | `createReport` al tocar un botón del panel | Crea el reporte. Body: `{ latitude, longitude, status: 'no' \| 'baja' \| 'ok' }`. Responde `201` con el reporte guardado, `422` si está fuera de la ZMG o `429` si se pasa del límite por IP (3/min, 20/h) |
 | `WS /api/reports/ws` | `connectRealtime` | Empuja `{ type: 'new_report', report }` a todos los clientes conectados cada vez que alguien reporta |
 | `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre (`boundaries-layer.ts`) | Polígonos de colonias en formato MVT, zoom 9–16, con `Cache-Control` de 1 día |
 | `GET /api/reports/stats` | — (disponible, el mapa aún no lo usa) | Conteos vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua` |
@@ -187,7 +187,7 @@ Forma de un reporte (`ReportResponse`):
 
 **Tiempo real:** el WebSocket solo envía, el cliente no manda nada útil. Si se cae, el frontend reconecta con backoff exponencial (1 s → 30 s máx.) y al reconectar vuelve a pedir el área visible, porque los mensajes enviados mientras estaba desconectado se pierden. Al ocultar la pestaña se cierra la conexión y al volver se refresca. Los clientes conectados viven en memoria del proceso de la API, así que el broadcast solo funciona con **una sola instancia** de la API.
 
-**CORS:** la API acepta los orígenes de `CORS_ORIGINS` (por defecto `https://wawhere.com.mx` y localhost). En desarrollo no hace falta: el proxy de Vite manda `/api` (incluido el WebSocket) a `http://localhost:8000`.
+**CORS:** la API acepta los orígenes de `CORS_ORIGINS`. En desarrollo el proxy de Vite manda `/api` (incluido el WebSocket) a `http://localhost:8000`, pero la API valida el `Origin` del WebSocket, así que `http://localhost:5173` tiene que estar en `CORS_ORIGINS` de la API local.
 
 ### Flujo de un reporte
 
