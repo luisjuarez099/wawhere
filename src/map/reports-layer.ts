@@ -115,6 +115,10 @@ export function showColoniaPopup(
   popup.setLngLat(lngLat).setDOMContent(popupContent(colonia, resumen)).addTo(map)
 }
 
+export function hideColoniaPopup(): void {
+  popup.remove()
+}
+
 // DOM con textContent: nunca se arma HTML con datos
 function popupContent(colonia: Colonia, r?: ColoniaResumenProps): HTMLElement {
   const el = document.createElement('div')
@@ -124,9 +128,10 @@ function popupContent(colonia: Colonia, r?: ColoniaResumenProps): HTMLElement {
   title.textContent = colonia.nombre || 'Colonia sin nombre'
   el.append(title)
 
-  if (colonia.municipio) {
+  const lugar = [colonia.municipio, colonia.cp && `CP ${colonia.cp}`].filter(Boolean).join(' · ')
+  if (lugar) {
     const muni = document.createElement('p')
-    muni.textContent = colonia.municipio
+    muni.textContent = lugar
     el.append(muni)
   }
 

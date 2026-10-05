@@ -2,7 +2,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import '../shared/tokens.css'
 import './map.css'
 
-import { Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { GeolocateControl, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
 // MapLibre v6 busca su worker junto a su propio .mjs; con Vite (pre-bundle y build)
 // ese archivo no existe, así que Vite empaqueta el worker y le pasamos su URL.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
@@ -10,15 +10,17 @@ import { ApiError, connectRealtime, createReport, fetchResumen } from './api'
 import {
   COLONIA_HIT_LAYER,
   COLONIA_LAYERS,
+  MUNICIPIO_LAYERS,
   addBoundaryLayers,
   coloniaAt,
   setSelectedColonia,
   toColonia,
 } from './boundaries-layer'
+import { BASEMAPS, DEFAULT_BASEMAP, addBasemaps } from './basemaps'
 import { MAP_MAX_BOUNDS, MAP_MIN_ZOOM, MAP_STYLE_URL, ZMG_CENTER, ZMG_ZOOM } from './config'
 import { LocationError, getPosition, isInsideZmg } from './geolocation'
 import { LayerControls } from './layer-controls'
-import { RESUMEN_LAYERS, addResumenLayer, setLayersVisible, showColoniaPopup } from './reports-layer'
+import { RESUMEN_LAYERS, addResumenLayer, hideColoniaPopup, setLayersVisible, showColoniaPopup } from './reports-layer'
 import { ResumenStore } from './resumen-store'
 import type { Colonia, ReportStatus } from './types'
 
@@ -48,7 +50,12 @@ const map = new MapLibreMap({
   zoom: ZMG_ZOOM,
   minZoom: MAP_MIN_ZOOM,
   maxBounds: MAP_MAX_BOUNDS,
-  attributionControl: { compact: true },
+  attributionControl: {
+    compact: true,
+    customAttribution:
+      'Colonias: <a href="https://iieg.gob.mx/ns/" target="_blank" rel="noopener">IIEG Jalisco</a> · ' +
+      'Municipios: <a href="https://www.inegi.org.mx/temas/mg/" target="_blank" rel="noopener">INEGI</a>',
+  },
 })
 
 const store = new ResumenStore()
@@ -62,24 +69,12 @@ let userMarker: Marker | null = null
 function showUser(lng: number, lat: number): void {
   if (!userMarker) {
     const el = document.createElement('div')
-    el.className = 'user-dot'
+    // Mismo punto azul que usa el GeolocateControl de MapLibre
+    el.className = 'maplibregl-user-location-dot'
     el.setAttribute('aria-label', 'Tu ubicación')
     userMarker = new Marker({ element: el })
   }
   userMarker.setLngLat([lng, lat]).addTo(map)
-}
-
-async function locateMe(button: HTMLButtonElement): Promise<void> {
-  button.disabled = true
-  try {
-    const { coords } = await getPosition()
-    showUser(coords.longitude, coords.latitude)
-    map.flyTo({ center: [coords.longitude, coords.latitude], zoom: Math.max(map.getZoom(), 15) })
-  } catch (err) {
-    setStatus(err instanceof LocationError ? err.message : 'No pudimos obtener tu ubicación.')
-  } finally {
-    button.disabled = false
-  }
 }
 
 /** Espera a que el mapa termine de moverse y de cargar tiles (con tope por si ya estaba quieto). */
@@ -96,24 +91,61 @@ function waitIdle(timeoutMs = 4_000): Promise<void> {
 
 // ─── Controles ───
 
-map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+// Mapa base elegido; se recuerda en este navegador
+const BASEMAP_KEY = 'wawhere:basemap'
+let basemap = DEFAULT_BASEMAP
+try {
+  const saved = localStorage.getItem(BASEMAP_KEY)
+  if (saved && BASEMAPS.some((b) => b.id === saved)) basemap = saved
+} catch {
+  // Sin almacenamiento: se queda el mapa base por defecto
+}
+let setBasemap: ((id: string) => void) | null = null
+
+const geolocate = new GeolocateControl({
+  positionOptions: { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+  fitBoundsOptions: { maxZoom: 15 },
+})
+// El control dibuja su propio punto; se quita el del reporte para no ver dos
+geolocate.on('geolocate', () => userMarker?.remove())
+geolocate.on('error', (err) => {
+  setStatus(
+    err.code === 1 // PERMISSION_DENIED
+      ? 'Activa el permiso de ubicación del navegador para ir a tu ubicación.'
+      : 'No pudimos obtener tu ubicación.',
+  )
+})
+
 map.addControl(
   new LayerControls()
-    .toggle({
-      icon: '🔢',
-      label: 'Mostrar u ocultar el número de reportes por colonia',
+    .basemaps(BASEMAPS, basemap, (id) => {
+      basemap = id
+      setBasemap?.(id)
+      try {
+        localStorage.setItem(BASEMAP_KEY, id)
+      } catch {
+        // Sin almacenamiento: solo dura esta visita
+      }
+    })
+    .overlay({
+      label: 'Número de reportes',
       initial: true,
       onChange: (on) => setLayersVisible(map, RESUMEN_LAYERS, on),
     })
-    .toggle({
-      icon: '🏘️',
-      label: 'Mostrar u ocultar colonias',
+    .overlay({
+      label: 'Colonias',
       initial: true,
       onChange: (on) => setLayersVisible(map, COLONIA_LAYERS, on),
     })
-    .action({ icon: '📍', label: 'Ir a mi ubicación', onClick: locateMe }),
+    .overlay({
+      label: 'Municipios',
+      initial: true,
+      onChange: (on) => setLayersVisible(map, MUNICIPIO_LAYERS, on),
+    }),
   'top-right',
 )
+map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
+map.addControl(geolocate, 'top-right')
 
 // Los controles de abajo (atribución) quedan por encima del panel de reportes
 new ResizeObserver(() => {
@@ -235,17 +267,26 @@ async function loadResumen(): Promise<void> {
 }
 
 map.on('load', () => {
+  // Raster de mapas base primero, para que queden debajo de todo lo demás
+  setBasemap = addBasemaps(map)
+  setBasemap(basemap)
   // Primero colonias y límite estatal para que queden debajo del resumen
   addBoundaryLayers(map)
   render = addResumenLayer(map)
   setReportEnabled(true)
   void loadResumen()
 
-  // Tocar una colonia muestra sus conteos y la deja elegida para reportar
+  // Tocar una colonia muestra sus conteos y la deja elegida para reportar;
+  // tocarla otra vez la deselecciona y cierra el popup
   map.on('click', (e) => {
     const feature = map.queryRenderedFeatures(e.point, { layers: [COLONIA_HIT_LAYER] })[0]
     const colonia = feature ? toColonia(feature) : null
     if (!colonia) return
+    if (colonia.id === selected?.id) {
+      selectColonia(null)
+      hideColoniaPopup()
+      return
+    }
     selectColonia(colonia)
     showColoniaPopup(map, e.lngLat, colonia, store.get(colonia.id)?.properties)
   })

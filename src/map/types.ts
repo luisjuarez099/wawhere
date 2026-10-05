@@ -35,9 +35,10 @@ export type ResumenCollection = FeatureCollection<Point, ColoniaResumenProps>
 
 export type RealtimeMessage = { type: 'colonia_update'; feature: ColoniaResumen }
 
-// Colonia tomada de los vector tiles (id, nombre y municipio vienen de la tabla colonias)
+// Colonia tomada de los vector tiles (id, nombre, municipio y cp vienen de la tabla colonias)
 export interface Colonia {
   id: number
   nombre: string
   municipio: string
+  cp: string // código postal; vacío si la colonia no lo tiene
 }

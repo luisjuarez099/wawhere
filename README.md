@@ -50,6 +50,8 @@ Saber rápido si el problema de agua es solo en tu casa o en toda tu colonia, y 
 | **Mapa base**             | Calles, nombres de lugares, relieve urbano                                                               | [OpenStreetMap](https://www.openstreetmap.org/copyright) (© colaboradores de OSM, licencia ODbL), servido por [OpenFreeMap](https://openfreemap.org) con el estilo _positron_ | Tiles vectoriales directo desde OpenFreeMap, sin pasar por la API                                                                                                                                          |
 | **Colonias** 🏘️           | Polígonos y nombres de las colonias de Jalisco                                                           | Instituto de Información Estadística y Geográfica de Jalisco ([IIEG](https://iieg.gob.mx)), capa de colonias con marco INE 2024. 6,624 polígonos                              | El script `scripts/load_colonias.sh` (repo `wawhere-api`) descarga el shapefile, lo convierte de UTM 13N a WGS84 con `ogr2ogr` y lo carga en PostGIS. La API lo sirve como vector tiles (MVT) en zoom 9–16 |
 | **Límite de Jalisco**     | Contorno punteado del estado                                                                             | _Fuente por confirmar_                                                                                                                                                        | Archivo estático `public/jalisco.geojson`                                                                                                                                                                  |
+| **Municipios**            | Límites y nombres de los 125 municipios de Jalisco                                                       | [INEGI](https://www.inegi.org.mx/temas/mg/), Marco Geoestadístico 2023 (vía [mexico-geojson](https://github.com/PhantomInsights/mexico-geojson))                            | Archivo estático `public/municipios.geojson` (~700 KB, ~210 KB con gzip). Polígonos simplificados (~30 m en la ZMG, ~100 m en el resto) y un punto interior por municipio para su nombre |
+| **Mapas base opcionales** | OpenStreetMap estándar e imágenes satelitales                                                            | [OpenStreetMap](https://www.openstreetmap.org/copyright) y [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9)                 | Tiles raster que se eligen en el botón de capas; solo se descargan cuando están activos                                                                                                                   |
 | **Conteo por colonia** 🔢 | Círculo con el número de reportes vigentes, del color del estado más reportado (en empate, el más grave) | Reportes de los vecinos                                                                                                                                                       | `GET /api/reports/resumen` y actualizaciones por WebSocket                                                                                                                                                 |
 | **Colonias coloreadas**   | La colonia completa se pinta del color de su estado                                                      | Reportes de los vecinos, sobre la capa de colonias                                                                                                                            | `feature-state` de MapLibre sobre los tiles de colonias                                                                                                                                                    |
 
@@ -125,7 +127,8 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 ├── mapa/index.html              # Página del mapa
 ├── public/
 │   ├── favicon.svg
-│   └── jalisco.geojson          # Límite estatal
+│   ├── jalisco.geojson          # Límite estatal
+│   └── municipios.geojson       # Límites y nombres de los 125 municipios (INEGI)
 ├── src/
 │   ├── shared/tokens.css        # Colores y variables comunes (--red, --yellow, --green…)
 │   ├── landing/
@@ -138,8 +141,9 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   │   ├── api.ts               # GET /resumen, POST /reports y WebSocket
 │   │   ├── resumen-store.ts     # Conteos por colonia (HTTP + WebSocket)
 │   │   ├── reports-layer.ts     # Círculos con conteo, colonias coloreadas y popup
-│   │   ├── boundaries-layer.ts  # Colonias (vector tiles), límite de Jalisco, búsqueda de colonia
-│   │   ├── layer-controls.ts    # Botones 🔢 🏘️ 📍
+│   │   ├── boundaries-layer.ts  # Colonias (vector tiles), límites de Jalisco y municipios, búsqueda de colonia
+│   │   ├── basemaps.ts          # Mapas base: Claro, OpenStreetMap, Satélite
+│   │   ├── layer-controls.ts    # Botón de capas: mapa base y capas visibles
 │   │   ├── geolocation.ts       # Ubicación del usuario y validación de la ZMG
 │   │   └── map.css
 │   └── vite-env.d.ts            # Tipos de las variables VITE_*
@@ -176,6 +180,8 @@ Docker en Easypanel: el `Dockerfile` construye con Node 22 y sirve `dist/` con n
 
 - Mapa base: © [colaboradores de OpenStreetMap](https://www.openstreetmap.org/copyright), datos bajo ODbL. Tiles de [OpenFreeMap](https://openfreemap.org).
 - Colonias: Instituto de Información Estadística y Geográfica de Jalisco (IIEG).
+- Municipios: Instituto Nacional de Estadística y Geografía ([INEGI](https://www.inegi.org.mx/temas/mg/)), Marco Geoestadístico 2023.
+- Mapa satelital: imágenes © Esri, Maxar, Earthstar Geographics.
 - Mapa: [MapLibre GL JS](https://maplibre.org) (licencia BSD-3-Clause).
 
 ---

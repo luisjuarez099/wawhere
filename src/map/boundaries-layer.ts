@@ -18,6 +18,9 @@ export const COLONIA_LAYERS = ['colonias-fill', 'colonias-line', 'colonias-label
  * cae un punto o un clic aunque el usuario haya ocultado las colonias.
  */
 export const COLONIA_HIT_LAYER = 'colonias-hit'
+
+/** Capas que prende/apaga la casilla "Municipios". */
+export const MUNICIPIO_LAYERS = ['municipios-line', 'municipios-label'] as const
 const SELECTED_LAYER = 'colonias-selected'
 
 // Color por colonia según su id, así las vecinas casi siempre quedan de distinto tono.
@@ -129,6 +132,48 @@ export function addBoundaryLayers(map: MapLibreMap): void {
     firstLabel,
   )
 
+  // Límites de los 125 municipios de Jalisco (INEGI, Marco Geoestadístico 2023).
+  // El archivo trae los polígonos y un punto interior por municipio para su nombre.
+  // Simplificados: ~30 m en los municipios de la ZMG y ~100 m en el resto.
+  map.addSource('municipios', { type: 'geojson', data: `${import.meta.env.BASE_URL}municipios.geojson` })
+
+  map.addLayer(
+    {
+      id: 'municipios-line',
+      type: 'line',
+      source: 'municipios',
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: {
+        'line-color': '#5b4a8a',
+        'line-opacity': 0.75,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 2.5],
+      },
+    },
+    firstLabel,
+  )
+
+  map.addLayer({
+    id: 'municipios-label',
+    type: 'symbol',
+    source: 'municipios',
+    filter: ['==', ['geometry-type'], 'Point'],
+    // De cerca ya se leen los nombres de colonia
+    maxzoom: 14,
+    layout: {
+      'text-field': ['get', 'nombre'],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11, 12, 14],
+      'text-transform': 'uppercase',
+      'text-letter-spacing': 0.08,
+      'text-max-width': 8,
+    },
+    paint: {
+      'text-color': '#5b4a8a',
+      'text-halo-color': '#fff',
+      'text-halo-width': 1.5,
+    },
+  })
+
   // Nombres de colonia solo de cerca, cuando caben
   map.addLayer({
     id: 'colonias-label',
@@ -160,6 +205,7 @@ export function toColonia(feature: MapGeoJSONFeature): Colonia | null {
     id: Number(feature.id),
     nombre: String(feature.properties?.nombre ?? ''),
     municipio: String(feature.properties?.municipio ?? ''),
+    cp: String(feature.properties?.cp ?? ''),
   }
 }
 

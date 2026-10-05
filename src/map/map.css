@@ -75,32 +75,75 @@ body {
   font-size: 13px;
 }
 
-/* ─── Controles 🔥 📌 📍 ─── */
+/* ─── Control de capas ─── */
 
-.map-controls button {
-  font-size: 16px;
-  line-height: 1;
+.layer-control {
+  position: relative;
 }
 
-.map-controls button[aria-pressed='false'] {
-  filter: grayscale(1);
-  opacity: 0.45;
+.layer-control-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-panel {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  min-width: 190px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 0.1);
+  font: 14px/1.4 'Inter', system-ui, sans-serif;
+  color: var(--text);
+}
+
+.layer-panel[hidden],
+.layer-panel fieldset[hidden] {
+  display: none;
+}
+
+.layer-panel fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.layer-panel fieldset + fieldset {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.layer-panel legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.layer-panel label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.layer-panel input {
+  margin: 0;
+  accent-color: var(--blue);
 }
 
 .maplibregl-ctrl-bottom-left,
 .maplibregl-ctrl-bottom-right {
   bottom: var(--panel-h, 0px);
-}
-
-/* ─── Tu ubicación ─── */
-
-.user-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--blue);
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 6px rgb(21 101 192 / 0.2);
 }
 
 /* ─── Panel de reporte ─── */
