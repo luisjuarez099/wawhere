@@ -24,7 +24,7 @@ const shareStatus = document.querySelector<HTMLElement>('#share-status')
 
 shareBtn?.addEventListener('click', async () => {
   const data = {
-    title: 'wawhere',
+    title: 'aguajalisco',
     text: '¿Hay agua en tu colonia? Mapa colaborativo de Guadalajara.',
     url: window.location.href,
   }

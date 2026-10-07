@@ -1,10 +1,10 @@
-# wawhere
+# aguajalisco
 
 Mapa comunitario del estado del servicio de agua en la Zona Metropolitana de Guadalajara (ZMG). Los vecinos reportan cómo está el agua en su colonia (**sin agua**, **baja presión** o **con agua**) y el mapa muestra cuántos reportes hay en cada colonia en las últimas horas.
 
 Es gratis, no pide registro y los reportes son anónimos. Está en fase de pruebas.
 
-Sitio: [wawhere.com.mx](https://wawhere.com.mx) · Mapa: [wawhere.com.mx/mapa](https://wawhere.com.mx/mapa/)
+Sitio: [aguajalisco.org](https://wawhere.org) · Mapa: [aguajalisco.org/mapa](https://aguajalisco.org/mapa/)
 
 ---
 
@@ -45,25 +45,25 @@ Saber rápido si el problema de agua es solo en tu casa o en toda tu colonia, y 
 
 ## Capas del mapa y sus fuentes
 
-| Capa                      | Qué muestra                                                                                              | Fuente                                                                                                                                                                        | Cómo llega al mapa                                                                                                                                                                                         |
-| ------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mapa base**             | Calles, nombres de lugares, relieve urbano                                                               | [OpenStreetMap](https://www.openstreetmap.org/copyright) (© colaboradores de OSM, licencia ODbL), servido por [OpenFreeMap](https://openfreemap.org) con el estilo _positron_ | Tiles vectoriales directo desde OpenFreeMap, sin pasar por la API                                                                                                                                          |
-| **Colonias** 🏘️           | Polígonos y nombres de las colonias de Jalisco                                                           | Instituto de Información Estadística y Geográfica de Jalisco ([IIEG](https://iieg.gob.mx)), capa de colonias con marco INE 2024. 6,624 polígonos                              | El script `scripts/load_colonias.sh` (repo `wawhere-api`) descarga el shapefile, lo convierte de UTM 13N a WGS84 con `ogr2ogr` y lo carga en PostGIS. La API lo sirve como vector tiles (MVT) en zoom 9–16 |
-| **Límite de Jalisco**     | Contorno punteado del estado                                                                             | _Fuente por confirmar_                                                                                                                                                        | Archivo estático `public/jalisco.geojson`                                                                                                                                                                  |
-| **Municipios**            | Límites y nombres de los 125 municipios de Jalisco                                                       | [INEGI](https://www.inegi.org.mx/temas/mg/), Marco Geoestadístico 2023 (vía [mexico-geojson](https://github.com/PhantomInsights/mexico-geojson))                            | Archivo estático `public/municipios.geojson` (~700 KB, ~210 KB con gzip). Polígonos simplificados (~30 m en la ZMG, ~100 m en el resto) y un punto interior por municipio para su nombre |
-| **Mapas base opcionales** | OpenStreetMap estándar e imágenes satelitales                                                            | [OpenStreetMap](https://www.openstreetmap.org/copyright) y [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9)                 | Tiles raster que se eligen en el botón de capas; solo se descargan cuando están activos                                                                                                                   |
-| **Conteo por colonia** 🔢 | Círculo con el número de reportes vigentes, del color del estado más reportado (en empate, el más grave) | Reportes de los vecinos                                                                                                                                                       | `GET /api/reports/resumen` y actualizaciones por WebSocket                                                                                                                                                 |
-| **Colonias coloreadas**   | La colonia completa se pinta del color de su estado                                                      | Reportes de los vecinos, sobre la capa de colonias                                                                                                                            | `feature-state` de MapLibre sobre los tiles de colonias                                                                                                                                                    |
+| Capa                      | Qué muestra                                                                                              | Fuente                                                                                                                                                                        | Cómo llega al mapa                                                                                                                                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mapa base**             | Calles, nombres de lugares, relieve urbano                                                               | [OpenStreetMap](https://www.openstreetmap.org/copyright) (© colaboradores de OSM, licencia ODbL), servido por [OpenFreeMap](https://openfreemap.org) con el estilo _positron_ | Tiles vectoriales directo desde OpenFreeMap, sin pasar por la API                                                                                                                                              |
+| **Colonias** 🏘️           | Polígonos y nombres de las colonias de Jalisco                                                           | Instituto de Información Estadística y Geográfica de Jalisco ([IIEG](https://iieg.gob.mx)), capa de colonias con marco INE 2024. 6,624 polígonos                              | El script `scripts/load_colonias.sh` (repo `aguajalisco-api`) descarga el shapefile, lo convierte de UTM 13N a WGS84 con `ogr2ogr` y lo carga en PostGIS. La API lo sirve como vector tiles (MVT) en zoom 9–16 |
+| **Límite de Jalisco**     | Contorno punteado del estado                                                                             | _Fuente por confirmar_                                                                                                                                                        | Archivo estático `public/jalisco.geojson`                                                                                                                                                                      |
+| **Municipios**            | Límites y nombres de los 125 municipios de Jalisco                                                       | [INEGI](https://www.inegi.org.mx/temas/mg/), Marco Geoestadístico 2023 (vía [mexico-geojson](https://github.com/PhantomInsights/mexico-geojson))                              | Archivo estático `public/municipios.geojson` (~700 KB, ~210 KB con gzip). Polígonos simplificados (~30 m en la ZMG, ~100 m en el resto) y un punto interior por municipio para su nombre                       |
+| **Mapas base opcionales** | OpenStreetMap estándar e imágenes satelitales                                                            | [OpenStreetMap](https://www.openstreetmap.org/copyright) y [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9)                    | Tiles raster que se eligen en el botón de capas; solo se descargan cuando están activos                                                                                                                        |
+| **Conteo por colonia** 🔢 | Círculo con el número de reportes vigentes, del color del estado más reportado (en empate, el más grave) | Reportes de los vecinos                                                                                                                                                       | `GET /api/reports/resumen` y actualizaciones por WebSocket                                                                                                                                                     |
+| **Colonias coloreadas**   | La colonia completa se pinta del color de su estado                                                      | Reportes de los vecinos, sobre la capa de colonias                                                                                                                            | `feature-state` de MapLibre sobre los tiles de colonias                                                                                                                                                        |
 
 El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_PointOnSurface`). Es un punto fijo de la colonia, no la ubicación de quien reportó.
 
-**Zona de reportes:** se acepta cualquier colonia de los municipios de la ZMG. La lista está en `ZMG_MUNICIPIOS`, en `wawhere-api/app/services/report_service.py`. El mapa se puede recorrer por todo Jalisco, pero solo se puede reportar dentro de la ZMG.
+**Zona de reportes:** se acepta cualquier colonia de los municipios de la ZMG. La lista está en `ZMG_MUNICIPIOS`, en `aguajalisco-api/app/services/report_service.py`. El mapa se puede recorrer por todo Jalisco, pero solo se puede reportar dentro de la ZMG.
 
 ## Cómo está construido
 
 ```
 ┌──────────────────────────┐        ┌───────────────────────────┐        ┌──────────────────────────┐
-│  wawhere (este repo)     │  HTTP  │  wawhere-api (repo aparte)│  SQL   │  PostgreSQL + PostGIS    │
+│  aguajalisco (este repo)     │  HTTP  │  aguajalisco-api (repo aparte)│  SQL   │  PostgreSQL + PostGIS    │
 │  Vite + TS + MapLibre    │ ─────▶ │  FastAPI + SQLAlchemy     │ ─────▶ │                          │
 │  servido por nginx       │ ◀───── │  async (asyncpg)          │ ◀───── │  tablas: reports,        │
 │                          │   WS   │  + APScheduler            │        │          colonias        │
@@ -74,7 +74,7 @@ El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_
 ```
 
 - **Frontend (este repo):** sitio estático con Vite, TypeScript y MapLibre GL JS. No guarda nada en servidor. Ubica la colonia del usuario consultando los tiles de colonias que ya tiene en pantalla.
-- **API (`wawhere-api`):** FastAPI con Python 3.12. Es la única que habla con la base de datos. Valida la colonia, guarda el reporte, calcula los conteos y avisa por WebSocket.
+- **API (`aguajalisco-api`):** FastAPI con Python 3.12. Es la única que habla con la base de datos. Valida la colonia, guarda el reporte, calcula los conteos y avisa por WebSocket.
 - **Base de datos:** PostgreSQL con PostGIS (imagen `postgis/postgis:17-3.5`). PostGIS genera los vector tiles de colonias y el punto interior de cada colonia.
 - **Infraestructura:** VPS propio con Easypanel. Frontend y API corren en contenedores Docker separados.
 
@@ -113,7 +113,7 @@ Forma de cada colonia en `/resumen`:
 | Tabla      | Quién la crea                                              | Columnas                                                                                                |
 | ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `reports`  | La API al arrancar (`create_all`) más una migración manual | `id` (UUID), `colonia_id` (FK a `colonias.id`), `status` (`no`/`baja`/`ok`), `created_at` (timestamptz) |
-| `colonias` | `scripts/load_colonias.sh` (en `wawhere-api`)              | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)    |
+| `colonias` | `scripts/load_colonias.sh` (en `aguajalisco-api`)          | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)    |
 
 ### Tiempo real
 
@@ -137,7 +137,7 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   ├── map/
 │   │   ├── main.ts              # Arma el mapa, controles, flujo de reporte y carga de datos
 │   │   ├── config.ts            # URLs, límites de la ZMG/Jalisco, colores y etiquetas
-│   │   ├── types.ts             # Tipos espejo de los schemas de wawhere-api
+│   │   ├── types.ts             # Tipos espejo de los schemas de aguajalisco-api
 │   │   ├── api.ts               # GET /resumen, POST /reports y WebSocket
 │   │   ├── resumen-store.ts     # Conteos por colonia (HTTP + WebSocket)
 │   │   ├── reports-layer.ts     # Círculos con conteo, colonias coloreadas y popup
@@ -156,7 +156,7 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 
 ```bash
 npm install
-npm run dev       # Vite; /api se redirige a http://localhost:8000 (wawhere-api local)
+npm run dev       # Vite; /api se redirige a http://localhost:8000 (aguajalisco-api local)
 npm run build     # tsc + vite build → dist/
 npm run preview
 ```
@@ -168,13 +168,13 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 | Variable                   | Default              | Para qué                                             |
 | -------------------------- | -------------------- | ---------------------------------------------------- |
 | `VITE_MAP_URL`             | `/mapa/`             | A dónde apuntan los botones "Abrir el mapa"          |
-| `VITE_API_URL`             | mismo origen         | URL de `wawhere-api`                                 |
+| `VITE_API_URL`             | mismo origen         | URL de `aguajalisco-api`                             |
 | `VITE_MAP_STYLE_URL`       | OpenFreeMap positron | Estilo del mapa base                                 |
 | `VITE_REPORT_EXPIRY_HOURS` | `24`                 | Debe coincidir con `REPORT_EXPIRY_HOURS` del backend |
 
 ## Deploy
 
-Docker en Easypanel: el `Dockerfile` construye con Node 22 y sirve `dist/` con nginx. Las variables `VITE_*` se pasan como build args. nginx no hace proxy de `/api`; en producción la API se sirve en el mismo dominio (`wawhere.com.mx/api`) desde Easypanel.
+Docker en Easypanel: el `Dockerfile` construye con Node 22 y sirve `dist/` con nginx. Las variables `VITE_*` se pasan como build args. nginx no hace proxy de `/api`; en producción la API se sirve en el mismo dominio (`aguajalisco.com.mx/api`) desde Easypanel.
 
 ## Atribución
 
@@ -186,4 +186,4 @@ Docker en Easypanel: el `Dockerfile` construye con Node 22 y sirve `dist/` con n
 
 ---
 
-_wawhere · proyecto comunitario · Guadalajara, Jalisco · 2026_
+_aguajalisco · proyecto comunitario · Guadalajara, Jalisco · 2026_

@@ -132,6 +132,7 @@ export function addBoundaryLayers(map: MapLibreMap): void {
     firstLabel,
   )
 
+
   // Límites de los 125 municipios de Jalisco (INEGI, Marco Geoestadístico 2023).
   // El archivo trae los polígonos y un punto interior por municipio para su nombre.
   // Simplificados: ~30 m en los municipios de la ZMG y ~100 m en el resto.

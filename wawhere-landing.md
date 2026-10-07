@@ -83,9 +83,10 @@ wawhere está en fase de pruebas. Mientras más personas reporten, más útil es
 
 ---
 
-*wawhere · proyecto comunitario · Guadalajara, Jalisco · 2026*
+_wawhere · proyecto comunitario · Guadalajara, Jalisco · 2026_
 
 ---
+
 ---
 
 # Notas técnicas
@@ -94,16 +95,16 @@ wawhere está en fase de pruebas. Mientras más personas reporten, más útil es
 
 El sitio son dos páginas independientes construidas con Vite (multi-page). La landing no carga nada de MapLibre.
 
-| Ruta | Archivo | Qué es |
-|---|---|---|
-| `/` | `index.html` → `src/landing/main.ts` | Landing con el texto de arriba, FAQ (una pregunta abierta a la vez) y botón Compartir |
-| `/mapa/` | `mapa/index.html` → `src/map/main.ts` | Mapa en tiempo real y panel para reportar |
+| Ruta     | Archivo                               | Qué es                                                                                |
+| -------- | ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `/`      | `index.html` → `src/landing/main.ts`  | Landing con el texto de arriba, FAQ (una pregunta abierta a la vez) y botón Compartir |
+| `/mapa/` | `mapa/index.html` → `src/map/main.ts` | Mapa en tiempo real y panel para reportar                                             |
 
 Los botones "Abrir el mapa" de la landing apuntan a `/mapa/` (o a `VITE_MAP_URL` si está definida).
 
 ## El mapa (`/mapa/`)
 
-- **Mapa base:** MapLibre GL con el estilo *positron* de OpenFreeMap (tiles de OSM, sin API key).
+- **Mapa base:** MapLibre GL con el estilo _positron_ de OpenFreeMap (tiles de OSM, sin API key).
 - **Vista inicial:** ZMG. Se puede mover por todo Jalisco, pero solo se puede reportar dentro de la ZMG.
 - **Reportar:** panel inferior con tres botones (Sin agua / Baja presión / Con agua). Pide la ubicación, la envía a la API y el reporte aparece al instante. Después de reportar hay una espera de 60 s antes de poder reportar de nuevo.
 - **Capas** (controles arriba a la derecha):
@@ -169,20 +170,26 @@ Los botones "Abrir el mapa" de la landing apuntan a `/mapa/` (o a `VITE_MAP_URL`
 
 El cliente está en `src/map/api.ts` y los tipos en `src/map/types.ts` (espejo de `app/schemas/report.py`). La URL base es `VITE_API_URL`; si está vacía se usa el mismo origen.
 
-| Endpoint | Quién lo usa | Qué hace |
-|---|---|---|
-| `GET /api/reports?lat_min&lat_max&lng_min&lng_max` | `fetchReports` al mover el mapa | Reportes vigentes dentro del área visible (+50 % de margen). Sin parámetros devuelve todos los vigentes |
-| `POST /api/reports` | `createReport` al tocar un botón del panel | Crea el reporte. Body: `{ latitude, longitude, status: 'no' \| 'baja' \| 'ok' }`. Responde `201` con el reporte guardado, `422` si está fuera de la ZMG o `429` si se pasa del límite por IP (3/min, 20/h) |
-| `WS /api/reports/ws` | `connectRealtime` | Empuja `{ type: 'new_report', report }` a todos los clientes conectados cada vez que alguien reporta |
-| `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre (`boundaries-layer.ts`) | Polígonos de colonias en formato MVT, zoom 9–16, con `Cache-Control` de 1 día |
-| `GET /api/reports/stats` | — (disponible, el mapa aún no lo usa) | Conteos vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua` |
-| `GET /api/health` | Monitoreo | `{ status: 'ok' }` |
+| Endpoint                                           | Quién lo usa                                         | Qué hace                                                                                                                                                                                                   |
+| -------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/reports?lat_min&lat_max&lng_min&lng_max` | `fetchReports` al mover el mapa                      | Reportes vigentes dentro del área visible (+50 % de margen). Sin parámetros devuelve todos los vigentes                                                                                                    |
+| `POST /api/reports`                                | `createReport` al tocar un botón del panel           | Crea el reporte. Body: `{ latitude, longitude, status: 'no' \| 'baja' \| 'ok' }`. Responde `201` con el reporte guardado, `422` si está fuera de la ZMG o `429` si se pasa del límite por IP (3/min, 20/h) |
+| `WS /api/reports/ws`                               | `connectRealtime`                                    | Empuja `{ type: 'new_report', report }` a todos los clientes conectados cada vez que alguien reporta                                                                                                       |
+| `GET /api/tiles/colonias/{z}/{x}/{y}.pbf`          | Fuente vectorial de MapLibre (`boundaries-layer.ts`) | Polígonos de colonias en formato MVT, zoom 9–16, con `Cache-Control` de 1 día                                                                                                                              |
+| `GET /api/reports/stats`                           | — (disponible, el mapa aún no lo usa)                | Conteos vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua`                                                                                                                                          |
+| `GET /api/health`                                  | Monitoreo                                            | `{ status: 'ok' }`                                                                                                                                                                                         |
 
 Forma de un reporte (`ReportResponse`):
 
 ```json
-{ "id": "uuid", "latitude": 20.672, "longitude": -103.349, "status": "no",
-  "colonia": "Americana, Guadalajara", "created_at": "2026-10-02T15:04:05Z" }
+{
+  "id": "uuid",
+  "latitude": 20.672,
+  "longitude": -103.349,
+  "status": "no",
+  "colonia": "Americana, Guadalajara",
+  "created_at": "2026-10-02T15:04:05Z"
+}
 ```
 
 **Tiempo real:** el WebSocket solo envía, el cliente no manda nada útil. Si se cae, el frontend reconecta con backoff exponencial (1 s → 30 s máx.) y al reconectar vuelve a pedir el área visible, porque los mensajes enviados mientras estaba desconectado se pierden. Al ocultar la pestaña se cierra la conexión y al volver se refresca. Los clientes conectados viven en memoria del proceso de la API, así que el broadcast solo funciona con **una sola instancia** de la API.
@@ -191,7 +198,7 @@ Forma de un reporte (`ReportResponse`):
 
 ### Flujo de un reporte
 
-1. El usuario toca *Sin agua / Baja presión / Con agua*. El frontend obtiene la ubicación y verifica que esté dentro de la ZMG.
+1. El usuario toca _Sin agua / Baja presión / Con agua_. El frontend obtiene la ubicación y verifica que esté dentro de la ZMG.
 2. `POST /api/reports` con la ubicación exacta.
 3. La API busca la colonia en PostGIS con el punto exacto: la que lo contiene o, si cae en una calle, la más cercana a menos de ~300 m.
 4. Guarda el reporte con las coordenadas **redondeadas a 3 decimales (~100 m)**. La ubicación exacta no se guarda.
@@ -199,10 +206,10 @@ Forma de un reporte (`ReportResponse`):
 
 ### Base de datos
 
-| Tabla | Quién la crea | Columnas |
-|---|---|---|
-| `reports` | La API al arrancar (`Base.metadata.create_all`) | `id` (UUID), `latitude`, `longitude` (float, redondeadas), `status` (`no`/`baja`/`ok`), `colonia` (texto, puede ser null), `created_at` (timestamptz) |
-| `colonias` | `scripts/load_colonias.sh` (en wawhere-api) | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST) |
+| Tabla      | Quién la crea                                   | Columnas                                                                                                                                              |
+| ---------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reports`  | La API al arrancar (`Base.metadata.create_all`) | `id` (UUID), `latitude`, `longitude` (float, redondeadas), `status` (`no`/`baja`/`ok`), `colonia` (texto, puede ser null), `created_at` (timestamptz) |
+| `colonias` | `scripts/load_colonias.sh` (en wawhere-api)     | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)                                                  |
 
 - **`colonias`** viene del shapefile del IIEG (marco INE 2024). El script lo descarga, lo convierte de UTM 13N a WGS84 con `ogr2ogr`, lo carga y rellena la colonia de los reportes que no la tengan. Se puede correr varias veces. Requiere `gdal-bin`, `psql`, `curl` y `unzip`.
 - Si la tabla `colonias` no existe, los reportes se guardan igual, sin colonia, y la capa de colonias del mapa sale vacía.
@@ -211,22 +218,22 @@ Forma de un reporte (`ReportResponse`):
 
 ### Configuración de la API
 
-| Variable | Default | Para qué |
-|---|---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://wawhere:wawhere_pass@db:5432/wawhere` | Conexión a PostgreSQL/PostGIS |
-| `CORS_ORIGINS` | `https://wawhere.com.mx,http://localhost:3000` | Orígenes permitidos, separados por coma |
-| `REPORT_EXPIRY_HOURS` | `24` | Vigencia de un reporte |
+| Variable              | Default                                                     | Para qué                                |
+| --------------------- | ----------------------------------------------------------- | --------------------------------------- |
+| `DATABASE_URL`        | `postgresql+asyncpg://wawhere:wawhere_pass@db:5432/wawhere` | Conexión a PostgreSQL/PostGIS           |
+| `CORS_ORIGINS`        | `https://aguajalisco,http://localhost:3000`                 | Orígenes permitidos, separados por coma |
+| `REPORT_EXPIRY_HOURS` | `24`                                                        | Vigencia de un reporte                  |
 
 ## Variables de entorno
 
 Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 
-| Variable | Default | Para qué |
-|---|---|---|
-| `VITE_MAP_URL` | `/mapa/` | A dónde apuntan los botones "Abrir el mapa" |
-| `VITE_API_URL` | mismo origen | URL de wawhere-api |
-| `VITE_MAP_STYLE_URL` | OpenFreeMap positron | Estilo del mapa base |
-| `VITE_REPORT_EXPIRY_HOURS` | `24` | Debe coincidir con `REPORT_EXPIRY_HOURS` del backend |
+| Variable                   | Default              | Para qué                                             |
+| -------------------------- | -------------------- | ---------------------------------------------------- |
+| `VITE_MAP_URL`             | `/mapa/`             | A dónde apuntan los botones "Abrir el mapa"          |
+| `VITE_API_URL`             | mismo origen         | URL de wawhere-api                                   |
+| `VITE_MAP_STYLE_URL`       | OpenFreeMap positron | Estilo del mapa base                                 |
+| `VITE_REPORT_EXPIRY_HOURS` | `24`                 | Debe coincidir con `REPORT_EXPIRY_HOURS` del backend |
 
 ## Desarrollo
 

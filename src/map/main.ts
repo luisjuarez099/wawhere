@@ -1,6 +1,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '../shared/tokens.css'
 import './map.css'
+// import './clima.css';
 
 import { GeolocateControl, Map as MapLibreMap, Marker, NavigationControl, setWorkerUrl } from 'maplibre-gl'
 // MapLibre v6 busca su worker junto a su propio .mjs; con Vite (pre-bundle y build)
@@ -23,6 +24,7 @@ import { LayerControls } from './layer-controls'
 import { RESUMEN_LAYERS, addResumenLayer, hideColoniaPopup, setLayersVisible, showColoniaPopup } from './reports-layer'
 import { ResumenStore } from './resumen-store'
 import type { Colonia, ReportStatus } from './types'
+import { ClimaControl } from './climaLayer'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
 // El límite real lo pone la API; esto solo cuida al usuario honesto.
@@ -273,6 +275,10 @@ map.on('load', () => {
   // Primero colonias y límite estatal para que queden debajo del resumen
   addBoundaryLayers(map)
   render = addResumenLayer(map)
+  // Lluvia satelital: encima del mapa base y colonias, debajo de los conteos
+  // Clima: encima de colonias y mapa base, debajo de los conteos de reportes
+  map.addControl(new ClimaControl({ beforeId: RESUMEN_LAYERS[0] }), 'bottom-left')
+
   setReportEnabled(true)
   void loadResumen()
 
