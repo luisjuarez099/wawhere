@@ -8,19 +8,234 @@ body {
   line-height: 1.6;
 }
 
-.top,
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 main,
 footer {
   max-width: 640px;
   margin: 0 auto;
 }
 
+/* El header se pega arriba: las secciones dejan espacio para que su título no quede debajo */
+section[id] {
+  scroll-margin-top: 72px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 20;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--text);
+  color: #fff;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: 0 -20px;
+  padding: 0 20px;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.site-header.is-scrolled {
+  border-bottom-color: var(--line);
+}
+
 .top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
+  gap: 16px;
+  max-width: 920px;
+  min-height: 64px;
+  margin: 0 auto;
   font-size: 16px;
+}
+
+.logo {
+  margin-right: auto;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav ul {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav li {
+  margin: 0;
+}
+
+.nav ul a {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav ul a:hover {
+  color: var(--text);
+  background: #efece5;
+}
+
+.nav ul a[aria-current='true'] {
+  color: var(--blue);
+}
+
+.top .button {
+  padding: 8px 16px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+/* Escritorio: el botón del mapa vive dentro del nav */
+.top .header-map,
+.top .nav-toggle {
+  display: none;
+}
+
+.nav-toggle {
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.nav-toggle:hover {
+  background: #efece5;
+}
+
+.nav-toggle path {
+  transition: transform 0.2s, opacity 0.2s;
+  transform-origin: center;
+}
+
+.nav-toggle[aria-expanded='true'] .bar-top {
+  transform: translateY(5px) rotate(45deg);
+}
+
+.nav-toggle[aria-expanded='true'] .bar-mid {
+  opacity: 0;
+}
+
+.nav-toggle[aria-expanded='true'] .bar-bot {
+  transform: translateY(-5px) rotate(-45deg);
+}
+
+/* Móvil y tablet: menú desplegable. Sin JS el nav queda visible como lista */
+@media (max-width: 880px) {
+  .top {
+    flex-wrap: wrap;
+  }
+
+  .nav {
+    order: 1;
+    flex-basis: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding-bottom: 16px;
+  }
+
+  /* Con JS el menú se despliega encima del contenido, sin empujarlo */
+  .has-js .nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 0 20px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 12px 24px rgb(0 0 0 / 0.08);
+  }
+
+  .nav ul {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .nav ul a {
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    font-size: 17px;
+  }
+
+  .nav ul a:hover {
+    background: transparent;
+  }
+
+  .nav-map {
+    text-align: center;
+  }
+
+  .has-js .nav-toggle {
+    display: inline-flex;
+  }
+
+  .has-js .header-map {
+    display: inline-block;
+  }
+
+  .has-js .nav-map {
+    display: none;
+  }
+
+  .has-js .nav:not(.is-open) {
+    display: none;
+  }
+
+  .nav.is-open {
+    max-height: calc(100dvh - 64px);
+    overflow-y: auto;
+  }
+}
+
+/* Pantallas angostas: el botón del mapa pasa al menú para que no se encime con el logo */
+@media (max-width: 359px) {
+  .top .header-map {
+    display: none;
+  }
+
+  .has-js .nav-map {
+    display: block;
+  }
 }
 
 .logo {
@@ -236,5 +451,126 @@ footer a:hover {
 
   h1 {
     font-size: 32px;
+  }
+}
+
+h3 {
+  font-size: 19px;
+  line-height: 1.3;
+  margin: 28px 0 10px;
+}
+
+.intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.intro-actions a:not(.button) {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin: 8px 0 28px;
+  padding: 0;
+  list-style: none;
+}
+
+.contacts li {
+  margin: 0;
+}
+
+.contact {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.contact:hover {
+  border-color: var(--blue);
+}
+
+.contact-name {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.contact-value {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+.stats div {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.stats dt {
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--blue);
+}
+
+.stats dd {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.bars {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  font-size: 16px;
+}
+
+.bars li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #dbe7f5 var(--pct), transparent var(--pct));
+}
+
+.bars li span:last-child {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.source {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+@media (max-width: 480px) {
+  .stats dt {
+    font-size: 26px;
   }
 }

@@ -3,10 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>aguajalisco</title>
+    <title>
+      ¿Hay agua en tu colonia? Mapa de cortes de agua en Guadalajara |
+      aguajalisco
+    </title>
     <meta
       name="description"
-      content="Mapa colaborativo donde los vecinos de Guadalajara reportan si tienen agua, baja presión o servicio normal."
+      content="Mapa colaborativo y gratuito para saber si hay agua, baja presión o cortes en tu colonia de Guadalajara, Zapopan, Tlaquepaque, Tonalá y Tlajomulco. Cómo reportar al SIAPA y datos del diagnóstico metropolitano del agua."
+    />
+    <link rel="canonical" href="https://aguajalisco.org/" />
+    <meta name="theme-color" content="#fbfaf7" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="geo.region" content="MX-JAL" />
+    <meta name="geo.placename" content="Guadalajara" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:site_name" content="aguajalisco" />
+    <meta property="og:url" content="https://aguajalisco.org/" />
+    <meta
+      property="og:title"
+      content="¿Hay agua en tu colonia? Mapa de cortes de agua en Guadalajara"
+    />
+    <meta
+      property="og:description"
+      content="Vecinos de la ZMG reportan en tiempo real si tienen agua, baja presión o servicio normal. Gratis y sin cuenta."
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="¿Hay agua en tu colonia? Mapa de cortes de agua en Guadalajara"
+    />
+    <meta
+      name="twitter:description"
+      content="Vecinos de la ZMG reportan en tiempo real si tienen agua, baja presión o servicio normal. Gratis y sin cuenta."
     />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -16,37 +46,175 @@
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;600&display=swap"
       rel="stylesheet"
     />
-  </head>
-  <!-- Google tag (gtag.js) -->
-  <script
-    async
-    src="https://www.googletagmanager.com/gtag/js?id=G-8SGFYDCJ39"
-  ></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() {
-      dataLayer.push(arguments);
-    }
-    gtag("js", new Date());
 
-    gtag("config", "G-8SGFYDCJ39");
-  </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://aguajalisco.org/#website",
+            "name": "aguajalisco",
+            "url": "https://aguajalisco.org/",
+            "inLanguage": "es-MX"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Mapa del agua · aguajalisco",
+            "url": "https://aguajalisco.org/mapa/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "es-MX",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "MXN"
+            },
+            "description": "Mapa colaborativo donde los vecinos de la Zona Metropolitana de Guadalajara reportan si tienen agua, baja presión o servicio normal.",
+            "areaServed": [
+              { "@type": "City", "name": "Guadalajara" },
+              { "@type": "City", "name": "Zapopan" },
+              { "@type": "City", "name": "San Pedro Tlaquepaque" },
+              { "@type": "City", "name": "Tonalá" },
+              { "@type": "City", "name": "Tlajomulco de Zúñiga" }
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "¿Cómo reporto una falta de agua al SIAPA?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Llama a SIAPATEL al 33 3668 2482 o marca el 073. También puedes escribir a la página oficial del SIAPA en Facebook (facebook.com/siapagdl). Pide tu número de folio y guárdalo."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Mi reporte en aguajalisco llega al SIAPA?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. aguajalisco es un proyecto comunitario independiente, no es del SIAPA ni del gobierno. Para que el SIAPA atienda tu caso, repórtalo también por sus canales oficiales."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Necesito crear una cuenta?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Solo abre la app, permite tu ubicación y reporta."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Es gratis?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sí. No hay planes premium ni costos ocultos."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Comparten mi ubicación exacta?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Se usa para ubicar el reporte en tu colonia, nada más."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Cómo saben si un reporte es real?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Cuando varios reportes coinciden en la misma zona y horario, el sistema confirma el corte. Un reporte aislado se muestra pero no se toma como confirmación."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Cómo puedo ayudar?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Usándolo y compartiéndolo. Próximamente abriremos formas de contribuir al desarrollo de la plataforma."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-8SGFYDCJ39"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-8SGFYDCJ39");
+    </script>
+  </head>
   <body>
-    <header class="top">
-      <a class="logo" href="/">aguajalisco</a>
-      <a data-map-link href="#">Abrir el mapa</a>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+    <header class="site-header">
+      <div class="top">
+        <a class="logo" href="/">aguajalisco</a>
+        <nav class="nav" id="site-nav" aria-label="Secciones de la página">
+          <ul>
+            <li><a href="#como-funciona">Cómo funciona</a></li>
+            <li><a href="#reportar-siapa">Reportar al SIAPA</a></li>
+            <li><a href="#diagnostico">Diagnóstico</a></li>
+            <li><a href="#nosotros">Nosotros</a></li>
+            <li><a href="#preguntas">Preguntas</a></li>
+          </ul>
+          <a class="button nav-map" data-map-link href="#">Abrir el mapa</a>
+        </nav>
+        <a class="button header-map" data-map-link href="#">Abrir el mapa</a>
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-controls="site-nav"
+          aria-expanded="false"
+          aria-label="Abrir menú"
+          hidden
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          >
+            <path class="bar-top" d="M4 7h16" />
+            <path class="bar-mid" d="M4 12h16" />
+            <path class="bar-bot" d="M4 17h16" />
+          </svg>
+        </button>
+      </div>
     </header>
 
-    <main>
+    <main id="contenido">
       <section class="intro">
         <h1>¿Hay agua en tu colonia?</h1>
         <p>
           Un mapa colaborativo donde los vecinos de la ZMG (Zona Metropolitana
           de Guadalajara) reportan si tienen agua, baja presión o servicio
-          normal. Información en tiempo real, hecha por la comunidad, para la
-          comunidad.
+          normal en Guadalajara, Zapopan, Tlaquepaque, Tonalá y Tlajomulco.
+          Información en tiempo real, hecha por la comunidad, para la comunidad.
         </p>
-        <a class="button" data-map-link href="#">Abrir el mapa</a>
+        <div class="intro-actions">
+          <a class="button" data-map-link href="#">Abrir el mapa</a>
+          <a href="#reportar-siapa">¿Sin agua? Cómo reportar al SIAPA</a>
+        </div>
       </section>
 
       <section>
@@ -65,7 +233,7 @@
         </p>
       </section>
 
-      <section>
+      <section id="como-funciona">
         <p class="label">Cómo funciona</p>
         <h2>Tres toques y listo.</h2>
         <p>
@@ -90,6 +258,59 @@
         </ul>
       </section>
 
+      <section id="reportar-siapa" aria-labelledby="reportar-siapa-title">
+        <p class="label">Reporta al SIAPA</p>
+        <h2 id="reportar-siapa-title">
+          ¿Sin agua o con fugas? Repórtalo también al SIAPA.
+        </h2>
+        <p>
+          aguajalisco no es del SIAPA (Sistema Intermunicipal de los Servicios
+          de Agua Potable y Alcantarillado) ni del gobierno. Tu reporte en el
+          mapa avisa a tus vecinos, pero para que el SIAPA atienda tu caso
+          tienes que reportarlo por sus canales oficiales:
+        </p>
+        <ul class="contacts">
+          <li>
+            <a class="contact" href="tel:+523336682482">
+              <span class="contact-name">SIAPATEL</span>
+              <span class="contact-value">33 3668 2482</span>
+            </a>
+          </li>
+          <li>
+            <a class="contact" href="tel:073">
+              <span class="contact-name">Línea de reportes</span>
+              <span class="contact-value">073</span>
+            </a>
+          </li>
+          <li>
+            <a
+              class="contact"
+              href="https://www.facebook.com/siapagdl/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span class="contact-name">Facebook oficial</span>
+              <span class="contact-value">@siapagdl</span>
+            </a>
+          </li>
+        </ul>
+        <p class="label">Antes de llamar</p>
+        <ul>
+          <li>
+            Ten a la mano tu dirección completa, con colonia y entre calles
+          </li>
+          <li>
+            Si lo tienes, busca tu número de cuenta en el recibo del SIAPA
+          </li>
+          <li>
+            Describe el problema: sin agua, baja presión, agua turbia o con mal
+            olor, fuga en la calle
+          </li>
+          <li>Toma fotos o video si puedes</li>
+          <li>Pide tu número de folio y guárdalo para dar seguimiento</li>
+        </ul>
+      </section>
+
       <section>
         <p class="label">Para qué te sirve</p>
         <h2>Saber si antes de necesitarla cambia cómo organizas tu día.</h2>
@@ -104,7 +325,92 @@
         </ul>
       </section>
 
-      <section>
+      <section id="diagnostico" aria-labelledby="diagnostico-title">
+        <p class="label">Diagnóstico metropolitano del agua</p>
+        <h2 id="diagnostico-title">
+          Qué dicen 1,477 reportes de vecinos de la ZMG.
+        </h2>
+        <p>
+          Entre el 11 de marzo y el 14 de septiembre de 2026, 1,477 personas de
+          alrededor de 520 colonias respondieron la consulta ciudadana de la
+          campaña #ElSiapaQueQueremos del Instituto Mexicano para el Desarrollo
+          Comunitario (IMDEC). Estos son sus resultados principales:
+        </p>
+        <dl class="stats">
+          <div>
+            <dt>84.0%</dt>
+            <dd>describe agua con mal olor, turbia o con sedimentos</dd>
+          </div>
+          <div>
+            <dt>51.9%</dt>
+            <dd>
+              de los hogares reporta problemas de salud que asocia con el agua
+            </dd>
+          </div>
+          <div>
+            <dt>73.2%</dt>
+            <dd>tiene el problema desde hace meses o más de un año</dd>
+          </div>
+          <div>
+            <dt>6 de 784</dt>
+            <dd>
+              reportes hechos al SIAPA terminaron con el problema resuelto
+            </dd>
+          </div>
+        </dl>
+
+        <h3>El problema principal es la calidad</h3>
+        <p>
+          Más que la falta de agua, los reportes hablan del agua que sí llega:
+          65.3% menciona mal olor, 50.1% agua turbia y 43.3% sedimentos o color
+          extraño. Les siguen la baja presión (16.4%), los cobros excesivos
+          (12.8%), la falta de agua (11.6%) y los cortes constantes (9.7%). 8.5%
+          dice que tiene que comprar agua.
+        </p>
+
+        <h3>De dónde llegan los reportes</h3>
+        <ul class="bars">
+          <li style="--pct: 52.9%">
+            <span>Guadalajara</span><span>782 · 52.9%</span>
+          </li>
+          <li style="--pct: 23.5%">
+            <span>Zapopan</span><span>347 · 23.5%</span>
+          </li>
+          <li style="--pct: 11.4%">
+            <span>Tlaquepaque</span><span>169 · 11.4%</span>
+          </li>
+          <li style="--pct: 9.7%">
+            <span>Tonalá</span><span>144 · 9.7%</span>
+          </li>
+        </ul>
+        <p>
+          Las colonias con más reportes son Colinas de Tonalá (60), Americana
+          (46), Jardines del Country (34), Miravalle (34) y el Centro de
+          Guadalajara (25).
+        </p>
+
+        <h3>Qué pasa al reportar</h3>
+        <p>
+          784 personas (53.1%) reportaron su problema al SIAPA. 59.8% de ellas
+          no recibió respuesta y 37.9% recibió respuesta sin solución. Aun así,
+          reportar deja registro de cada falla: por eso vale la pena hacerlo y
+          guardar el folio.
+        </p>
+
+        <p class="source">
+          La consulta no es una muestra estadísticamente representativa: es un
+          registro ciudadano abierto. Fuente:
+          <a
+            href="https://www.imdecdhagua.org/diagnostico-metropolitano-agua/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Diagnóstico Metropolitano del agua, IMDEC</a
+          >, con datos al 14 de septiembre de 2026. Ahí puedes buscar tu colonia
+          en su mapa y leer el informe completo.
+        </p>
+      </section>
+
+      <section id="nosotros">
         <p class="label">Lo que somos</p>
         <h2>Vecinos informando a vecinos.</h2>
         <p>
@@ -127,10 +433,32 @@
         </p>
       </section>
 
-      <section>
+      <section id="preguntas">
         <p class="label">Preguntas</p>
         <h2>Lo que más nos preguntan.</h2>
         <div class="faq">
+          <details>
+            <summary>¿Cómo reporto una falta de agua al SIAPA?</summary>
+            <p>
+              Llama a SIAPATEL al
+              <a href="tel:+523336682482">33 3668 2482</a> o marca el
+              <a href="tel:073">073</a>. También puedes escribir a la
+              <a
+                href="https://www.facebook.com/siapagdl/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >página oficial del SIAPA en Facebook</a
+              >. Pide tu número de folio y guárdalo.
+            </p>
+          </details>
+          <details>
+            <summary>¿Mi reporte en aguajalisco llega al SIAPA?</summary>
+            <p>
+              No. aguajalisco es un proyecto comunitario independiente, no es
+              del SIAPA ni del gobierno. Para que el SIAPA atienda tu caso,
+              repórtalo también por sus canales oficiales.
+            </p>
+          </details>
           <details>
             <summary>¿Necesito crear una cuenta?</summary>
             <p>No. Solo abre la app, permite tu ubicación y reporta.</p>
@@ -184,6 +512,13 @@
           target="_blank"
           rel="noopener noreferrer"
           >IIEG Jalisco</a
+        >
+        ·
+        <a
+          href="https://www.imdecdhagua.org/diagnostico-metropolitano-agua/"
+          target="_blank"
+          rel="noopener noreferrer"
+          >IMDEC</a
         >
         ·
         <a
