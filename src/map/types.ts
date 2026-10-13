@@ -90,5 +90,13 @@ export interface ColoniaDetalle {
   quality: Record<ReportQuality, number>
   quality_total: number // reportes con al menos un problema
   ultimo_reporte: string | null // UTC
-  comentarios?: ColoniaComentario[] // últimos 10, del más reciente al más viejo
+  comentarios?: ColoniaComentario[] // primera página, del más reciente al más viejo
+  comentarios_total?: number
+  comentarios_hay_mas?: boolean // el resto se pide con getColoniaComentarios
+}
+
+// GET /api/colonias/{id}/comentarios: la siguiente página de comentarios
+export interface ColoniaComentarios {
+  comentarios: ColoniaComentario[]
+  hay_mas: boolean
 }

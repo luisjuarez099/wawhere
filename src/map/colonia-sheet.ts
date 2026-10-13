@@ -1,4 +1,4 @@
-import { getColoniaDetalle } from './api'
+import { getColoniaComentarios, getColoniaDetalle } from './api'
 import { QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS } from './config'
 import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, ReportStatus } from './types'
 
@@ -87,12 +87,18 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     error: $('#cs-error'),
     comments: $('#cs-comments'),
     commentsList: $<HTMLUListElement>('#cs-comments-list'),
+    commentsLabel: $('#cs-comments-label'),
+    commentsMore: $<HTMLButtonElement>('#cs-comments-more'),
+    commentsMsg: $('#cs-comments-msg'),
     report: $<HTMLButtonElement>('#cs-report'),
     close: $<HTMLButtonElement>('#cs-close'),
   }
 
   let colonia: Colonia | null = null
   let ctrl: AbortController | null = null
+  let moreCtrl: AbortController | null = null
+  // created_at del último comentario mostrado: de ahí sigue "Ver más"
+  let ultimoComentario: string | null = null
 
   function li(texto: string, numero: number, color?: string): HTMLLIElement {
     const item = document.createElement('li')
@@ -182,14 +188,49 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     el.quality.hidden = conReportes.length === 0
     el.chips.replaceChildren(...conReportes.map((q) => li(QUALITY_LABELS[q], d.quality[q])))
 
-    // Comentarios: historial de la colonia, aunque ya no haya reportes activos
+    // Comentarios: todo el historial de la colonia, del más reciente al más viejo,
+    // aunque ya no haya reportes activos. Llegan de 10 en 10; el resto con "Ver más"
     const comentarios = d.comentarios ?? []
+    moreCtrl?.abort()
     el.comments.hidden = comentarios.length === 0
     el.commentsList.replaceChildren(...comentarios.map(comentario))
+    el.commentsLabel.textContent = d.comentarios_total
+      ? `Comentarios de vecinos (${d.comentarios_total})`
+      : 'Comentarios de vecinos'
+    el.commentsMsg.textContent = ''
+    ultimoComentario = comentarios.at(-1)?.created_at ?? null
+    setMore(!!d.comentarios_hay_mas)
 
     el.empty.hidden = d.total > 0
     el.empty.textContent =
       `Nadie ha reportado aquí en los últimos ${ventanaTexto(d.ventana_horas)}. ¿Cómo está el agua en tu casa?`
+  }
+
+  function setMore(hayMas: boolean, cargando = false): void {
+    el.commentsMore.hidden = !hayMas
+    el.commentsMore.disabled = cargando
+    el.commentsMore.textContent = cargando ? 'Cargando…' : 'Ver más comentarios'
+  }
+
+  async function loadMore(): Promise<void> {
+    if (!colonia || !ultimoComentario) return
+    const id = colonia.id
+    moreCtrl?.abort()
+    moreCtrl = new AbortController()
+    setMore(true, true)
+    el.commentsMsg.textContent = ''
+    try {
+      const page = await getColoniaComentarios(id, ultimoComentario, moreCtrl.signal)
+      if (colonia?.id !== id) return
+      el.commentsList.append(...page.comentarios.map(comentario))
+      ultimoComentario = page.comentarios.at(-1)?.created_at ?? ultimoComentario
+      setMore(page.hay_mas)
+    } catch (err) {
+      if ((err as DOMException).name === 'AbortError') return
+      console.error(err)
+      setMore(true)
+      el.commentsMsg.textContent = 'No se pudieron cargar más comentarios. Intenta de nuevo.'
+    }
   }
 
   /** Abre (o actualiza) la hoja. `resumen` se muestra al instante y sirve de respaldo si la API falla. */
@@ -220,6 +261,7 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
 
   function close(): void {
     ctrl?.abort()
+    moreCtrl?.abort()
     colonia = null
     sheet.hidden = true
     document.body.classList.remove('colonia-open')
@@ -229,6 +271,7 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     close()
     onClose()
   })
+  el.commentsMore.addEventListener('click', () => void loadMore())
   el.report.addEventListener('click', () => {
     if (colonia) onReport(colonia, el.report)
   })

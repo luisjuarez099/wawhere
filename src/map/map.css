@@ -1289,6 +1289,29 @@ body.colonia-open .report-panel {
   overflow-wrap: anywhere;
 }
 
+.cs-more {
+  min-height: var(--tap);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-input);
+  background: var(--c-surface);
+  color: var(--c-primary);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+
+.cs-more:hover:not(:disabled) {
+  background: var(--c-surface-tint);
+}
+
+.cs-more:disabled {
+  color: var(--c-muted);
+  cursor: default;
+}
+
+.cs-more[hidden] {
+  display: none;
+}
+
 .cs-comment-text {
   color: var(--c-ink);
   line-height: 1.45;

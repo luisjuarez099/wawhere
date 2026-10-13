@@ -1,5 +1,5 @@
 import { API_URL } from './config'
-import type { ColoniaBusqueda, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection, StatsResponse } from './types'
+import type { ColoniaBusqueda, ColoniaComentarios, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection, StatsResponse } from './types'
 
 /** Error HTTP con el status y el detail, para mostrar un mensaje distinto según el caso (422, 429…). */
 export class ApiError extends Error {
@@ -38,6 +38,18 @@ export async function searchColonias(
   const params = new URLSearchParams({ q, limit: '8', lng: cerca[0].toFixed(3), lat: cerca[1].toFixed(3) })
   const res = await fetch(`${API_URL}/api/colonias?${params}`, { signal })
   if (!res.ok) throw new ApiError(res.status, `GET /api/colonias?q= → ${res.status}`)
+  return res.json()
+}
+
+/** Comentarios más viejos que `antes` (el created_at del último que ya se mostró). */
+export async function getColoniaComentarios(
+  id: number,
+  antes: string,
+  signal?: AbortSignal,
+): Promise<ColoniaComentarios> {
+  const params = new URLSearchParams({ antes, limit: '20' })
+  const res = await fetch(`${API_URL}/api/colonias/${id}/comentarios?${params}`, { signal })
+  if (!res.ok) throw new ApiError(res.status, `GET /api/colonias/${id}/comentarios → ${res.status}`)
   return res.json()
 }
 

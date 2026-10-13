@@ -44,7 +44,7 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 
 **Qué se publica:** solo conteos por colonia. Por cada colonia con reportes vigentes, el mapa muestra el total, el desglose por estado (sin agua, baja presión, con agua, fuga), cuántas veces se reportó cada problema de calidad y la hora del reporte más reciente de la colonia. Nunca se publican reportes individuales.
 
-**Textos libres:** la descripción de "Otro" y el comentario **son públicos**: la hoja de cada colonia muestra los 10 más recientes, con su estado y su hora, sin ningún dato de quién los escribió. Antes de devolverlos, la API oculta correos y números de teléfono (en la base queda el texto original). El formulario avisa que el texto se verá en el mapa y pide no escribir nombres, teléfonos ni direcciones. Si un comentario trae datos personales, se borra su texto de la base.
+**Textos libres:** la descripción de "Otro" y el comentario **son públicos**: la hoja de cada colonia los muestra todos, del más reciente al más viejo (10 al abrirla y el resto con *Ver más comentarios*), con su estado y su hora, sin ningún dato de quién los escribió. Antes de devolverlos, la API oculta correos y números de teléfono (en la base queda el texto original). El formulario avisa que el texto se verá en el mapa y pide no escribir nombres, teléfonos ni direcciones. Si un comentario trae datos personales, se borra su texto de la base.
 
 **Calidad:** es la percepción de los vecinos, no un análisis de laboratorio.
 
@@ -96,7 +96,8 @@ El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_
 | ----------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/reports/resumen`                | `fetchResumen`, al cargar y cada 2 min | GeoJSON con un punto por colonia y sus conteos vigentes                                                                                           |
 | `POST /api/reports`                       | `createReport`, al enviar el reporte   | Body: `{ colonia_id, status, quality?, quality_other?, comment? }`. Responde `201` (con `quality`, sin los textos libres), `422` y `429` (ver abajo) |
-| `GET /api/colonias/{id}`                  | Hoja de colonia (`getColoniaDetalle`)  | Conteos de los reportes activos de una colonia (por estado, por calidad, fecha del último reporte) y sus últimos 10 comentarios. Si falla, la hoja usa los conteos de `/resumen` |
+| `GET /api/colonias/{id}`                  | Hoja de colonia (`getColoniaDetalle`)  | Conteos de los reportes activos de una colonia (por estado, por calidad, fecha del último reporte) y la primera página de comentarios (10, con `comentarios_total` y `comentarios_hay_mas`). Si falla, la hoja usa los conteos de `/resumen` |
+| `GET /api/colonias/{id}/comentarios`      | "Ver más comentarios" (`getColoniaComentarios`) | Siguiente página (20) de comentarios más viejos que `antes` (el `created_at` del último mostrado). Responde `{ comentarios, hay_mas }` |
 | `GET /api/colonias?q=`                    | Buscador (`searchColonias`)            | Hasta 8 colonias cuyo nombre contiene `q` (sin importar acentos), con su `bbox`. `lng`/`lat` es el centro del mapa visible, para ordenar las homónimas por cercanía |
 | `WS /api/reports/ws`                      | `connectRealtime`                      | Envía `{ type: 'colonia_update', feature }` con el conteo nuevo de una colonia cada vez que alguien reporta                                       |
 | `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre           | Polígonos de colonias en MVT, zoom 9–16, con caché de 1 día                                                                                       |
@@ -229,7 +230,7 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 
 - **Buscador de colonias** con el endpoint nuevo `GET /api/colonias?q=`.
 - **Clusters y mapa de calor** de los reportes; las colonias siguen coloreadas por estado.
-- **Comentarios públicos:** la hoja de colonia muestra los últimos 10 comentarios y textos de "Otro", con correos y teléfonos ocultos. El paso *Detalles* del formulario ahora avisa que el texto será público.
+- **Comentarios públicos:** la hoja de colonia muestra todos los comentarios y textos de "Otro" (de 10 en 10 al principio y luego de 20 en 20 con *Ver más comentarios*), con correos y teléfonos ocultos. El paso *Detalles* del formulario ahora avisa que el texto será público.
 
 ### Fugas de agua
 
