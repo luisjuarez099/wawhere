@@ -1,5 +1,5 @@
 import { API_URL } from './config'
-import type { ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection } from './types'
+import type { ColoniaBusqueda, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection } from './types'
 
 /** Error HTTP con el status y el detail, para mostrar un mensaje distinto según el caso (422, 429…). */
 export class ApiError extends Error {
@@ -19,6 +19,18 @@ export async function fetchResumen(signal?: AbortSignal): Promise<ResumenCollect
 export async function getColoniaDetalle(id: number, signal?: AbortSignal): Promise<ColoniaDetalle> {
   const res = await fetch(`${API_URL}/api/colonias/${id}`, { signal })
   if (!res.ok) throw new ApiError(res.status, `GET /api/colonias/${id} → ${res.status}`)
+  return res.json()
+}
+
+/** Colonias por nombre. `cerca` es el centro del mapa (no la ubicación del usuario) para ordenar los homónimos. */
+export async function searchColonias(
+  q: string,
+  cerca: [number, number],
+  signal?: AbortSignal,
+): Promise<ColoniaBusqueda[]> {
+  const params = new URLSearchParams({ q, limit: '8', lng: cerca[0].toFixed(3), lat: cerca[1].toFixed(3) })
+  const res = await fetch(`${API_URL}/api/colonias?${params}`, { signal })
+  if (!res.ok) throw new ApiError(res.status, `GET /api/colonias?q= → ${res.status}`)
   return res.json()
 }
 

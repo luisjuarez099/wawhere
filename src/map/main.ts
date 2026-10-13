@@ -26,6 +26,7 @@ import { ResumenStore } from './resumen-store'
 import type { Colonia } from './types'
 import { errorMessage, initReportSheet } from './report-sheet'
 import { initColoniaSheet } from './colonia-sheet'
+import { initColoniaSearch } from './colonia-search'
 import { ClimaControl } from './climaLayer'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
@@ -274,6 +275,27 @@ const coloniaSheet = initColoniaSheet({
   onClose: () => {
     selectColonia(null)
     reportOpen.focus()
+  },
+})
+
+// ─── Buscar colonia ───
+
+initColoniaSearch({
+  getCenter: () => map.getCenter().toArray() as [number, number],
+  onSelect: ({ id, nombre, municipio, cp, bbox }) => {
+    chooseColonia({ id, nombre, municipio, cp: cp ?? '' })
+    // Se acerca después de abrir la hoja para dejar libre lo que tapa: el panel
+    // lateral en escritorio o la hoja de abajo en el teléfono. Leer offsetHeight ya
+    // calcula el layout de la hoja recién abierta.
+    // Tope para que el padding nunca sea mayor que el mapa (fitBounds no se movería)
+    const sheetH = phone.matches ? Math.min(coloniaSheetEl.offsetHeight, window.innerHeight * 0.55) : 0
+    map.fitBounds(bbox, {
+      padding: phone.matches
+        ? { top: 72, right: 56, bottom: sheetH + 24, left: 24 }
+        : { top: 72, right: 72, bottom: 40, left: coloniaSheetEl.offsetWidth + 48 },
+      maxZoom: 16,
+      duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1200,
+    })
   },
 })
 

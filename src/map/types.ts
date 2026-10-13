@@ -48,6 +48,15 @@ export interface Colonia {
   municipio: string
   cp: string // código postal; vacío si la colonia no lo tiene
 }
+// Cada resultado de GET /api/colonias?q=: datos de la colonia y su caja [oeste, sur, este, norte]
+export interface ColoniaBusqueda {
+  id: number
+  nombre: string
+  municipio: string
+  cp: string | null
+  bbox: [number, number, number, number]
+}
+
 // Respuesta de GET /api/colonias/{id}: conteos de los reportes activos de una colonia
 export interface ColoniaDetalle {
   colonia_id: number

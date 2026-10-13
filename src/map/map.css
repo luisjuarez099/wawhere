@@ -81,6 +81,184 @@ body {
   pointer-events: auto;
 }
 
+/* ─── Buscador de colonias: la lupa despliega la barra ─── */
+
+.map-bar {
+  z-index: 16; /* encima de la hoja de colonia, debajo de la hoja de reporte */
+  align-items: flex-start; /* los resultados crecen hacia abajo sin mover el logo */
+}
+
+.map-logo {
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+}
+
+.map-search {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.map-search-toggle {
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  cursor: pointer;
+}
+
+.map-search-toggle:hover {
+  background: var(--c-surface-muted);
+}
+
+.map-search.is-open .map-search-toggle {
+  background: var(--c-surface-tint);
+  box-shadow: inset 0 0 0 2px var(--c-primary);
+}
+
+.map-search-panel {
+  /* Ancho disponible: deja libres la lupa y los controles de la derecha */
+  width: min(360px, calc(100vw - 210px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--c-surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgb(16 35 47 / 0.18);
+  font-family: var(--font-body);
+  color: var(--c-ink);
+}
+
+.map-search-panel[hidden] {
+  display: none;
+}
+
+.map-search-field {
+  display: flex;
+  align-items: center;
+  height: var(--tap);
+}
+
+.map-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 16px var(--font-body); /* 16px: iOS no hace zoom al enfocar */
+  outline: none;
+}
+
+.map-search-input::-webkit-search-cancel-button {
+  display: none; /* ya está el botón de cerrar */
+}
+
+.map-search-panel:focus-within {
+  box-shadow: 0 4px 16px rgb(16 35 47 / 0.18), inset 0 0 0 2px var(--c-primary);
+}
+
+.map-search-close {
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--c-muted);
+  cursor: pointer;
+}
+
+.map-search-close:hover {
+  color: var(--c-ink);
+}
+
+.map-search-results {
+  max-height: min(320px, 50dvh);
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border-top: 1px solid var(--c-border);
+}
+
+.map-search-results[hidden] {
+  display: none;
+}
+
+.search-option {
+  min-height: var(--tap);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.search-option[aria-selected='true'] {
+  background: var(--c-surface-tint);
+}
+
+.search-option-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.search-option-sub {
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+.map-search-msg {
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--c-border);
+  font-size: 14px;
+  color: var(--c-muted);
+}
+
+.map-search-msg[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .map-search-panel:not([hidden]) {
+    animation: search-in 0.16s ease-out;
+    transform-origin: left center;
+  }
+
+  @keyframes search-in {
+    from {
+      opacity: 0;
+      transform: scaleX(0.85);
+    }
+  }
+}
+
+/* Teléfono: al abrir el buscador se oculta el logo para dejarle espacio */
+@media (max-width: 599px) {
+  body.search-open .map-logo,
+  body.search-open .map-status {
+    display: none;
+  }
+
+  .map-search-panel {
+    width: calc(100vw - 12px - var(--tap) - 8px - 56px);
+  }
+}
+
 .map-status {
   margin: 0;
   padding: 8px 12px;
