@@ -1090,6 +1090,67 @@ body.colonia-open .report-panel {
   text-align: center;
 }
 
+/* ─── Comentarios de vecinos ─── */
+
+.cs-comments-block {
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
+}
+
+.cs-comments {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cs-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  font-size: 14px;
+}
+
+.cs-comment + .cs-comment {
+  border-top: 1px solid var(--c-border);
+}
+
+.cs-comment:first-child {
+  padding-top: 0;
+}
+
+.cs-comment p {
+  margin: 0;
+}
+
+.cs-comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--c-muted);
+}
+
+/* "Otro" es calidad: familia naranja */
+.cs-comment-other {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  background: var(--c-q-bg);
+  color: var(--c-q-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.cs-comment-text {
+  color: var(--c-ink);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
 @media (min-width: 768px) {
   .colonia-sheet {
     left: 16px;

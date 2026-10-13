@@ -1,6 +1,6 @@
 import { getColoniaDetalle } from './api'
 import { QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS } from './config'
-import type { Colonia, ColoniaDetalle, ColoniaResumenProps, ReportStatus } from './types'
+import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, ReportStatus } from './types'
 
 // Hoja informativa al tocar una colonia (pantalla 1 del diseño): suministro,
 // calidad reportada y último reporte, con el botón para reportar ahí.
@@ -56,6 +56,7 @@ function detalleDesdeResumen(colonia: Colonia, r?: ColoniaResumenProps): Colonia
     quality: { mal_olor: 0, turbia: 0, sedimentos: 0, otro: 0 },
     quality_total: 0,
     ultimo_reporte: null,
+    comentarios: [],
   }
 }
 
@@ -83,6 +84,8 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     chips: $('#cs-chips'),
     empty: $('#cs-empty'),
     error: $('#cs-error'),
+    comments: $('#cs-comments'),
+    commentsList: $<HTMLUListElement>('#cs-comments-list'),
     report: $<HTMLButtonElement>('#cs-report'),
     close: $<HTMLButtonElement>('#cs-close'),
   }
@@ -102,6 +105,37 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     const b = document.createElement('b')
     b.textContent = String(numero)
     item.append(`${texto} `, b)
+    return item
+  }
+
+  function comentario(c: ColoniaComentario): HTMLLIElement {
+    const item = document.createElement('li')
+    item.className = 'cs-comment'
+
+    const meta = document.createElement('p')
+    meta.className = 'cs-comment-meta'
+    const dot = document.createElement('span')
+    dot.className = 'cs-dot'
+    dot.style.setProperty('--dot', STATUS_COLOR[c.status])
+    dot.setAttribute('aria-hidden', 'true')
+    const fecha = document.createElement('time')
+    fecha.dateTime = c.created_at
+    fecha.textContent = formatFechaHora(c.created_at)
+    meta.append(dot, `${STATUS_LABELS[c.status]} · `, fecha)
+    item.append(meta)
+
+    if (c.quality_other) {
+      const otro = document.createElement('p')
+      otro.className = 'cs-comment-other'
+      otro.textContent = `Otro: ${c.quality_other}`
+      item.append(otro)
+    }
+    if (c.comment) {
+      const texto = document.createElement('p')
+      texto.className = 'cs-comment-text'
+      texto.textContent = c.comment
+      item.append(texto)
+    }
     return item
   }
 
@@ -146,6 +180,11 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     const conReportes = QUALITY_ORDER.filter((q) => d.quality[q] > 0).sort((a, b) => d.quality[b] - d.quality[a])
     el.quality.hidden = conReportes.length === 0
     el.chips.replaceChildren(...conReportes.map((q) => li(QUALITY_LABELS[q], d.quality[q])))
+
+    // Comentarios: historial de la colonia, aunque ya no haya reportes activos
+    const comentarios = d.comentarios ?? []
+    el.comments.hidden = comentarios.length === 0
+    el.commentsList.replaceChildren(...comentarios.map(comentario))
 
     el.empty.hidden = d.total > 0
     el.empty.textContent =

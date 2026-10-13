@@ -57,6 +57,15 @@ export interface ColoniaBusqueda {
   bbox: [number, number, number, number]
 }
 
+// Comentario público de un reporte (correos y teléfonos ya vienen ocultos)
+export interface ColoniaComentario {
+  id: string
+  status: ReportStatus
+  quality_other: string | null
+  comment: string | null
+  created_at: string
+}
+
 // Respuesta de GET /api/colonias/{id}: conteos de los reportes activos de una colonia
 export interface ColoniaDetalle {
   colonia_id: number
@@ -70,4 +79,5 @@ export interface ColoniaDetalle {
   quality: Record<ReportQuality, number>
   quality_total: number // reportes con al menos un problema
   ultimo_reporte: string | null // UTC
+  comentarios?: ColoniaComentario[] // últimos 10, del más reciente al más viejo
 }

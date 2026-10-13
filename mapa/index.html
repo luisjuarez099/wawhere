@@ -141,6 +141,11 @@
 
       <button type="button" class="btn-primary" id="cs-report">Reportar en esta colonia</button>
       <p class="hint cs-disclaimer">Percepción reportada por vecinos, no es un análisis de laboratorio.</p>
+
+      <section class="cs-block cs-comments-block" id="cs-comments" aria-labelledby="cs-comments-label" hidden>
+        <h3 class="cs-label" id="cs-comments-label">Comentarios de vecinos</h3>
+        <ul class="cs-comments" id="cs-comments-list"></ul>
+      </section>
     </section>
 
     <div class="sheet-backdrop" id="report-backdrop" hidden></div>
@@ -229,12 +234,12 @@
               <label class="field-label field-label--sm" for="comment">Comentario</label>
               <textarea class="textarea" id="comment" name="comment" rows="4" maxlength="280" placeholder="¿Desde cuándo? ¿Algo más que ayude a entender la situación?" aria-describedby="comment-hint comment-count"></textarea>
               <div class="field-foot">
-                <span id="comment-hint">No pongas nombres ni direcciones.</span>
+                <span id="comment-hint">Será público. No pongas nombres ni direcciones.</span>
                 <span id="comment-count">0 / 280</span>
               </div>
             </div>
 
-            <p class="notice">Los comentarios no se publican: nos ayudan a mejorar las categorías del mapa.</p>
+            <p class="notice">Tu comentario y lo que escribas en “Otro” se verán en el mapa, sin tu nombre. No pongas teléfonos, correos ni direcciones.</p>
           </div>
 
           <!-- Paso 3 · Confirmación -->

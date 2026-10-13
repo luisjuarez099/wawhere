@@ -44,7 +44,7 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 
 **Qué se publica:** solo conteos por colonia. Por cada colonia con reportes vigentes, el mapa muestra el total, el desglose por estado (sin agua, baja presión, con agua), cuántas veces se reportó cada problema de calidad y la hora del reporte más reciente de la colonia. Nunca se publican reportes individuales.
 
-**Textos libres:** la descripción de "Otro" y el comentario **no se publican ni se devuelven** en ninguna respuesta de la API. Se guardan solo para mejorar las categorías del mapa. El formulario pide no escribir nombres ni direcciones.
+**Textos libres:** la descripción de "Otro" y el comentario **son públicos**: la hoja de cada colonia muestra los 10 más recientes, con su estado y su hora, sin ningún dato de quién los escribió. Antes de devolverlos, la API oculta correos y números de teléfono (en la base queda el texto original). El formulario avisa que el texto se verá en el mapa y pide no escribir nombres, teléfonos ni direcciones. Si un comentario trae datos personales, se borra su texto de la base.
 
 **Calidad:** es la percepción de los vecinos, no un análisis de laboratorio.
 
@@ -96,7 +96,8 @@ El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_
 | ----------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/reports/resumen`                | `fetchResumen`, al cargar y cada 2 min | GeoJSON con un punto por colonia y sus conteos vigentes                                                                                           |
 | `POST /api/reports`                       | `createReport`, al enviar el reporte   | Body: `{ colonia_id, status, quality?, quality_other?, comment? }`. Responde `201` (con `quality`, sin los textos libres), `422` y `429` (ver abajo) |
-| `GET /api/colonias/{id}`                  | Hoja de colonia (`getColoniaDetalle`)  | Conteos de los reportes activos de una colonia: por estado, por calidad y fecha del último reporte. **Pendiente en la API**; mientras no exista, la hoja usa los conteos de `/resumen` |
+| `GET /api/colonias/{id}`                  | Hoja de colonia (`getColoniaDetalle`)  | Conteos de los reportes activos de una colonia (por estado, por calidad, fecha del último reporte) y sus últimos 10 comentarios. Si falla, la hoja usa los conteos de `/resumen` |
+| `GET /api/colonias?q=`                    | Buscador (`searchColonias`)            | Hasta 8 colonias cuyo nombre contiene `q` (sin importar acentos), con su `bbox`. `lng`/`lat` es el centro del mapa visible, para ordenar las homónimas por cercanía |
 | `WS /api/reports/ws`                      | `connectRealtime`                      | Envía `{ type: 'colonia_update', feature }` con el conteo nuevo de una colonia cada vez que alguien reporta                                       |
 | `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre           | Polígonos de colonias en MVT, zoom 9–16, con caché de 1 día                                                                                       |
 | `GET /api/reports/stats`                  | Disponible, el mapa aún no lo usa      | Totales vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua`                                                                                 |
@@ -160,12 +161,13 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   ├── map/
 │   │   ├── main.ts              # Arma el mapa, controles, selección de colonia, GPS y carga de datos
 │   │   ├── report-sheet.ts      # Formulario de reporte en 3 pasos (estado, calidad, detalles, confirmación)
-│   │   ├── colonia-sheet.ts     # Hoja informativa al tocar una colonia
+│   │   ├── colonia-sheet.ts     # Hoja informativa al tocar una colonia (conteos y comentarios)
+│   │   ├── colonia-search.ts    # Buscador de colonias (lupa que despliega la barra)
 │   │   ├── config.ts            # URLs, límites de la ZMG/Jalisco, colores, etiquetas de estado y calidad
 │   │   ├── types.ts             # Tipos espejo de los schemas de aguajalisco-api
-│   │   ├── api.ts               # GET /resumen, GET /colonias/{id}, POST /reports y WebSocket
+│   │   ├── api.ts               # GET /resumen, GET /colonias (búsqueda y detalle), POST /reports y WebSocket
 │   │   ├── resumen-store.ts     # Conteos por colonia (HTTP + WebSocket)
-│   │   ├── reports-layer.ts     # Círculos con conteo y colonias coloreadas
+│   │   ├── reports-layer.ts     # Clusters con conteo, mapa de calor y colonias coloreadas
 │   │   ├── boundaries-layer.ts  # Colonias (vector tiles), límites de Jalisco y municipios, búsqueda de colonia
 │   │   ├── basemaps.ts          # Mapas base: Claro, OpenStreetMap, Satélite
 │   │   ├── layer-controls.ts    # Botón de capas: mapa base y capas visibles
@@ -180,6 +182,8 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 ## Interfaz del mapa
 
 - **Hoja de colonia:** al tocar una colonia. Muestra nombre, municipio y CP, el estado dominante ("Mayoría sin agua"), la fecha del último reporte en hora de Guadalajara ("Hoy a las 11:16 a.m."), una barra con los conteos por estado y los problemas de calidad reportados. En el teléfono es una hoja inferior; en tablet y escritorio, un panel a la izquierda.
+- **Buscador de colonias:** la lupa junto al logo despliega una barra de búsqueda; se cierra con la misma lupa, con ✕, con `Esc` o tocando el mapa. Se navega con flechas y Enter. Al elegir una colonia se abre su hoja y el mapa la acerca sin que la tape la hoja. En el teléfono el logo se oculta mientras la barra está abierta.
+- **Clusters y mapa de calor:** los puntos de colonias cercanas se agrupan hasta zoom 13 en un círculo con la suma de reportes, del color del estado más frecuente; tocarlo acerca el mapa. El mapa de calor (morado, para no confundirse con los colores de suministro) pesa los problemas: *sin agua* cuenta 1 y *baja presión* 0.5; se desvanece de cerca, donde ya se ven las colonias coloreadas. Ambos se calculan con un punto interior de cada colonia, nunca con la ubicación de quien reportó, y se pueden apagar en el botón de capas.
 - **Formulario de reporte:** hoja de pantalla completa en el teléfono y panel lateral de 400 px en pantallas de 768 px o más, para que el mapa siga visible.
 - **Colores:** los de suministro (verde, amarillo, rojo) solo significan suministro; la calidad usa siempre una familia naranja para no confundir "turbia" con "baja presión". El color nunca es la única señal: cada estado lleva su texto y los problemas marcados llevan "✓".
 - **Accesibilidad:** estados y problemas son inputs nativos (radio y checkbox), se puede usar todo con teclado, `Esc` cierra la hoja de arriba y el foco vuelve al botón que la abrió. Objetivos táctiles de 44 px como mínimo y campos de texto de 16 px para que iOS no haga zoom.
@@ -215,7 +219,13 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 - **Confirmación:** el resumen se arma con lo que devolvió la API. Incluye "Avisar a mis vecinos" (menú de compartir del teléfono o copiar enlace). El enlace compartido es el del mapa, sin datos del reporte.
 - **Hoja de colonia:** reemplaza el popup que aparecía al tocar una colonia. Usa `GET /api/colonias/{id}` y, si no responde, muestra los conteos de `/resumen`.
 - **Panel inferior:** ahora es un solo botón, "Reportar aquí" (GPS) o "Reportar en {colonia}" si hay una colonia elegida. Se oculta mientras la hoja de colonia está abierta.
-- **Pendiente (requiere backend):** el endpoint `GET /api/colonias/{id}`, selector Suministro/Calidad sobre el mapa, conteo de calidad en la confirmación con umbral mínimo de reportes, y fotos.
+- **Pendiente (requiere backend):** selector Suministro/Calidad sobre el mapa, conteo de calidad en la confirmación con umbral mínimo de reportes, y fotos.
+
+### Buscador, clusters, mapa de calor y comentarios
+
+- **Buscador de colonias** con el endpoint nuevo `GET /api/colonias?q=`.
+- **Clusters y mapa de calor** de los reportes; las colonias siguen coloreadas por estado.
+- **Comentarios públicos:** la hoja de colonia muestra los últimos 10 comentarios y textos de "Otro", con correos y teléfonos ocultos. El paso *Detalles* del formulario ahora avisa que el texto será público.
 
 ## Deploy
 
