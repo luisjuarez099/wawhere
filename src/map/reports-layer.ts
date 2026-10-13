@@ -21,20 +21,27 @@ const estadoColor: ExpressionSpecification = [
   'match', ['get', 'estado'],
   'no', STATUS_COLORS.no,
   'baja', STATUS_COLORS.baja,
+  'fuga', STATUS_COLORS.fuga,
   STATUS_COLORS.ok,
 ]
 
-// Estado del grupo: el que suma más reportes; en empate, el más grave (igual que la API por colonia)
+// Estado del grupo: el que suma más reportes; en empate, el más grave (igual que la API
+// por colonia): sin agua, fuga, baja presión, con agua
+const maxConteo: ExpressionSpecification = [
+  'max', ['get', 'sin_agua'], ['get', 'fugas'], ['get', 'baja_presion'], ['get', 'con_agua'],
+]
 const grupoEstado: ExpressionSpecification = [
   'case',
-  ['all', ['>=', ['get', 'sin_agua'], ['get', 'baja_presion']], ['>=', ['get', 'sin_agua'], ['get', 'con_agua']]], 'no',
-  ['>=', ['get', 'baja_presion'], ['get', 'con_agua']], 'baja',
+  ['==', ['get', 'sin_agua'], maxConteo], 'no',
+  ['==', ['get', 'fugas'], maxConteo], 'fuga',
+  ['==', ['get', 'baja_presion'], maxConteo], 'baja',
   'ok',
 ]
 const grupoColor: ExpressionSpecification = [
   'match', grupoEstado,
   'no', STATUS_COLORS.no,
   'baja', STATUS_COLORS.baja,
+  'fuga', STATUS_COLORS.fuga,
   STATUS_COLORS.ok,
 ]
 
@@ -44,10 +51,11 @@ const esGrupo: ExpressionSpecification = ['has', 'point_count']
 /**
  * Reportes por colonia en tres capas, todas sobre el punto interior de cada
  * colonia (nunca la ubicación de nadie):
- * - Mapa de calor de los reportes de problemas (sin agua y baja presión).
+ * - Mapa de calor de los reportes de problemas (sin agua, fugas y baja presión).
  * - Grupos: a zoom bajo, las colonias cercanas se juntan en un círculo con la
  *   suma de sus reportes, del color del estado que más se reporta.
- * - Círculo por colonia al acercarse, con su número de reportes.
+ * - Círculo por colonia al acercarse, con su número de reportes (las fugas
+ *   cuentan como un reporte más de la colonia).
  * Además tiñe el polígono de cada colonia con su estado (feature-state).
  */
 export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => void {
@@ -65,6 +73,7 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
       sin_agua: ['+', ['get', 'sin_agua']],
       baja_presion: ['+', ['get', 'baja_presion']],
       con_agua: ['+', ['get', 'con_agua']],
+      fugas: ['+', ['get', 'fugas']],
     },
   })
   // Fuente aparte sin agrupar: el mapa de calor necesita cada colonia
@@ -79,7 +88,7 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
       // Pesan los problemas: "con agua" no debe calentar una zona
       'heatmap-weight': [
         'interpolate', ['linear'],
-        ['+', ['get', 'sin_agua'], ['*', 0.5, ['get', 'baja_presion']]],
+        ['+', ['get', 'sin_agua'], ['*', 0.5, ['+', ['get', 'baja_presion'], ['get', 'fugas']]]],
         0, 0,
         10, 1,
       ],
@@ -216,3 +225,4 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
 export function setLayersVisible(map: MapLibreMap, ids: readonly string[], visible: boolean): void {
   for (const id of ids) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
 }
+

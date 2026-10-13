@@ -1,5 +1,5 @@
 import { API_URL } from './config'
-import type { ColoniaBusqueda, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection } from './types'
+import type { ColoniaBusqueda, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection, StatsResponse } from './types'
 
 /** Error HTTP con el status y el detail, para mostrar un mensaje distinto según el caso (422, 429…). */
 export class ApiError extends Error {
@@ -12,6 +12,13 @@ export class ApiError extends Error {
 export async function fetchResumen(signal?: AbortSignal): Promise<ResumenCollection> {
   const res = await fetch(`${API_URL}/api/reports/resumen`, { signal })
   if (!res.ok) throw new ApiError(res.status, `GET /api/reports/resumen → ${res.status}`)
+  return res.json()
+}
+
+/** Totales de reportes; el mapa usa el histórico (los vigentes los calcula del resumen). */
+export async function fetchStats(signal?: AbortSignal): Promise<StatsResponse> {
+  const res = await fetch(`${API_URL}/api/reports/stats`, { signal })
+  if (!res.ok) throw new ApiError(res.status, `GET /api/reports/stats → ${res.status}`)
   return res.json()
 }
 

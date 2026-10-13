@@ -17,6 +17,7 @@
   --c-ok: var(--green);
   --c-baja: var(--yellow);
   --c-no: var(--red);
+  --c-fuga: var(--cyan); /* fuga de agua en la calle o la red */
 
   /* Calidad (naranja: distinto de los colores de suministro) */
   --c-q-accent: #b4530f;
@@ -367,6 +368,146 @@ body {
   font-size: 16px;
 }
 
+/* ─── Resumen de reportes (panel de abajo) ─── */
+
+.stats {
+  margin: -4px -6px 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--c-border);
+  font-family: var(--font-body);
+  color: var(--c-ink);
+}
+
+.stats[hidden] {
+  display: none;
+}
+
+.stats-toggle {
+  width: 100%;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: 500 14px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.stats-toggle:hover:not(:disabled) {
+  background: var(--c-surface-muted);
+}
+
+.stats-toggle:disabled {
+  cursor: default;
+}
+
+/* Punto "en vivo": los números cambian con cada reporte */
+.stats-live {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c-ok);
+  box-shadow: 0 0 0 3px rgb(46 154 90 / 0.2);
+}
+
+.stats-summary {
+  flex: 1;
+  min-width: 0;
+}
+
+.stats-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  color: var(--c-primary);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.stats-toggle:disabled .stats-more {
+  display: none;
+}
+
+.stats-more svg {
+  transition: transform 0.15s;
+}
+
+/* El detalle se abre hacia arriba: flecha arriba = abrir, abajo = cerrar */
+.stats-toggle[aria-expanded='true'] .stats-more svg {
+  transform: rotate(180deg);
+}
+
+.stats-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 6px 2px;
+}
+
+.stats-detail[hidden] {
+  display: none;
+}
+
+.stats-pct {
+  color: var(--c-muted);
+  font-size: 13px;
+}
+
+.stats-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.stats-facts > div {
+  display: flex;
+  flex-direction: column-reverse; /* número arriba, etiqueta abajo; en el DOM dt va primero */
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--c-surface-tint);
+}
+
+.stats-facts dt {
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--c-muted);
+}
+
+.stats-facts dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-updated {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stats-live {
+    animation: stats-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes stats-pulse {
+    50% {
+      box-shadow: 0 0 0 6px rgb(46 154 90 / 0);
+    }
+  }
+}
+
 .report-title {
   margin: 0 0 10px;
   font-family: 'Bricolage Grotesque', system-ui, sans-serif;
@@ -671,20 +812,20 @@ body.sheet-open {
 
 /* ─── Botones de estado ─── */
 
+/* 2 × 2: con agua, baja presión / sin agua, fuga */
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .status-option {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 88px;
+  min-height: 64px;
   padding: 8px 4px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-card);
@@ -994,6 +1135,10 @@ body.colonia-open .report-panel {
   --badge: var(--c-ok);
 }
 
+.cs-badge[data-status='fuga'] {
+  --badge: var(--c-fuga);
+}
+
 .cs-ultimo {
   display: flex;
   align-items: center;
@@ -1205,8 +1350,7 @@ body.colonia-open .report-panel {
   }
 
   .status-option {
-    min-height: 64px;
-    flex-direction: row;
+    min-height: 52px;
   }
 
   .sheet-step--done {

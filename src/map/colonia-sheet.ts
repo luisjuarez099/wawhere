@@ -6,11 +6,12 @@ import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, R
 // calidad reportada y último reporte, con el botón para reportar ahí.
 
 const TZ = 'America/Mexico_City'
-const STATUS_ORDER: ReportStatus[] = ['no', 'baja', 'ok']
+const STATUS_ORDER: ReportStatus[] = ['no', 'baja', 'ok', 'fuga']
 const STATUS_COLOR: Record<ReportStatus, string> = {
   no: 'var(--c-no)',
   baja: 'var(--c-baja)',
   ok: 'var(--c-ok)',
+  fuga: 'var(--c-fuga)',
 }
 
 const fmtHora = new Intl.DateTimeFormat('es-MX', { timeZone: TZ, hour: 'numeric', minute: '2-digit' })
@@ -43,7 +44,7 @@ function capitalizar(texto: string): string {
  * `/api/colonias/{id}` falla: sin calidad ni hora del último reporte.
  */
 function detalleDesdeResumen(colonia: Colonia, r?: ColoniaResumenProps): ColoniaDetalle {
-  const status = { no: r?.sin_agua ?? 0, baja: r?.baja_presion ?? 0, ok: r?.con_agua ?? 0 }
+  const status = { no: r?.sin_agua ?? 0, baja: r?.baja_presion ?? 0, ok: r?.con_agua ?? 0, fuga: r?.fugas ?? 0 }
   return {
     colonia_id: colonia.id,
     nombre: colonia.nombre,

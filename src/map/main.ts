@@ -7,7 +7,7 @@ import { GeolocateControl, Map as MapLibreMap, Marker, NavigationControl, setWor
 // MapLibre v6 busca su worker junto a su propio .mjs; con Vite (pre-bundle y build)
 // ese archivo no existe, así que Vite empaqueta el worker y le pasamos su URL.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { connectRealtime, fetchResumen } from './api'
+import { connectRealtime, fetchResumen, fetchStats } from './api'
 import {
   COLONIA_HIT_LAYER,
   COLONIA_LAYERS,
@@ -27,6 +27,7 @@ import type { Colonia } from './types'
 import { errorMessage, initReportSheet } from './report-sheet'
 import { initColoniaSheet } from './colonia-sheet'
 import { initColoniaSearch } from './colonia-search'
+import { initStatsPanel } from './stats-panel'
 import { ClimaControl } from './climaLayer'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
@@ -67,7 +68,12 @@ const map = new MapLibreMap({
 
 const store = new ResumenStore()
 let render: ReturnType<typeof addResumenLayer> | null = null
-const refresh = () => render?.(store.toGeoJSON())
+const stats = initStatsPanel()
+const refresh = () => {
+  const data = store.toGeoJSON()
+  render?.(data)
+  stats.update(data)
+}
 
 // ─── Ubicación del usuario (solo en esta pantalla, no se envía) ───
 
@@ -326,12 +332,28 @@ reportOpen.addEventListener('click', async () => {
 
 let controller: AbortController | null = null
 
+// El histórico solo lo sabe la API; se pide junto con el resumen y, tras un
+// reporte en vivo, una vez cada pocos segundos aunque lleguen varios
+let historicoTimer: number | undefined
+async function loadHistorico(): Promise<void> {
+  try {
+    stats.setHistorico((await fetchStats()).historico)
+  } catch (err) {
+    console.error(err) // el resto del resumen sigue funcionando
+  }
+}
+function scheduleHistorico(): void {
+  window.clearTimeout(historicoTimer)
+  historicoTimer = window.setTimeout(() => void loadHistorico(), 3_000)
+}
+
 async function loadResumen(): Promise<void> {
   controller?.abort()
   controller = new AbortController()
   try {
     store.replaceAll(await fetchResumen(controller.signal))
     refresh()
+    void loadHistorico()
     setStatus('')
   } catch (err) {
     if ((err as DOMException).name === 'AbortError') return
@@ -372,6 +394,7 @@ map.on('load', () => {
     onColoniaUpdate: (feature) => {
       store.upsert(feature)
       refresh()
+      scheduleHistorico()
     },
     onReconnect: () => void loadResumen(),
   })

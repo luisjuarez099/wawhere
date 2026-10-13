@@ -25,17 +25,19 @@ export const ZMG_MAX_BOUNDS: [[number, number], [number, number]] = [
   [-102.5, 21.2],
 ]
 
-// Mismos colores que --red / --yellow / --green en tokens.css
+// Mismos colores que --red / --yellow / --green / --cyan en tokens.css
 export const STATUS_COLORS: Record<ReportStatus, string> = {
   no: '#d93b3b',
   baja: '#e5a50a',
   ok: '#2e9a5a',
+  fuga: '#0b7fae',
 }
 
 export const STATUS_LABELS: Record<ReportStatus, string> = {
   no: 'Sin agua',
   baja: 'Baja presión',
   ok: 'Con agua',
+  fuga: 'Fuga de agua',
 }
 
 // Orden en que se muestran los chips de calidad

@@ -1,6 +1,6 @@
 # aguajalisco
 
-Mapa comunitario del estado del servicio de agua en la Zona Metropolitana de Guadalajara (ZMG). Los vecinos reportan cómo está el agua en su colonia (**sin agua**, **baja presión** o **con agua**) y, si quieren, cómo sale (turbia, con mal olor, con sedimentos u otro problema). El mapa muestra cuántos reportes hay en cada colonia en las últimas horas.
+Mapa comunitario del estado del servicio de agua en la Zona Metropolitana de Guadalajara (ZMG). Los vecinos reportan cómo está el agua en su colonia (**sin agua**, **baja presión**, **con agua** o **fuga de agua**) y, si quieren, cómo sale (turbia, con mal olor, con sedimentos u otro problema). El mapa muestra cuántos reportes hay en cada colonia en las últimas horas.
 
 Es gratis, no pide registro y los reportes son anónimos. Está en fase de pruebas.
 
@@ -22,7 +22,7 @@ Saber rápido si el problema de agua es solo en tu casa o en toda tu colonia, y 
    - **Tocando su colonia en el mapa**, sin compartir ubicación. Se abre una hoja con la información de la colonia (conteos por estado, calidad reportada y hora del último reporte) y el botón **Reportar en esta colonia**.
    - **Con el botón "Reportar aquí" (GPS):** la ubicación se usa solo dentro del navegador para encontrar la colonia en el mapa. Las coordenadas no se envían al servidor.
 2. Se abre el formulario de reporte en tres pasos:
-   1. **Nuevo reporte:** elige **Con agua**, **Baja presión** o **Sin agua**. Si eligió *Con agua* o *Baja presión*, puede marcar (opcional) cómo sale el agua: *Mal olor*, *Turbia*, *Sedimentos o color extraño* u *Otro*.
+   1. **Nuevo reporte:** elige **Con agua**, **Baja presión**, **Sin agua** o **Fuga de agua** (en la calle, banqueta o red). Si eligió *Con agua* o *Baja presión*, puede marcar (opcional) cómo sale el agua: *Mal olor*, *Turbia*, *Sedimentos o color extraño* u *Otro*.
    2. **Detalles (opcional):** una descripción corta si marcó *Otro* y un comentario libre.
    3. **Confirmación:** resumen de lo enviado y la opción de avisar a los vecinos (compartir el enlace del mapa).
 3. Al servidor llegan el número de colonia, el estado del agua y, si los llenó, la calidad y los textos opcionales.
@@ -36,13 +36,13 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 | Se guarda                                                                 | No se guarda                      |
 | ------------------------------------------------------------------------- | --------------------------------- |
 | Colonia del reporte (su id en la tabla de colonias)                       | Coordenadas o ubicación exacta    |
-| Estado del agua: `no`, `baja` u `ok`                                      | Nombre, correo, teléfono o cuenta |
+| Estado: `no`, `baja`, `ok` o `fuga`                                       | Nombre, correo, teléfono o cuenta |
 | Calidad percibida (opcional): `mal_olor`, `turbia`, `sedimentos`, `otro`  | Dirección o calle                 |
 | Descripción de "Otro" (opcional, máx. 80 caracteres)                      | Fotos                             |
 | Comentario (opcional, máx. 280 caracteres)                                |                                   |
 | Fecha y hora del reporte                                                  |                                   |
 
-**Qué se publica:** solo conteos por colonia. Por cada colonia con reportes vigentes, el mapa muestra el total, el desglose por estado (sin agua, baja presión, con agua), cuántas veces se reportó cada problema de calidad y la hora del reporte más reciente de la colonia. Nunca se publican reportes individuales.
+**Qué se publica:** solo conteos por colonia. Por cada colonia con reportes vigentes, el mapa muestra el total, el desglose por estado (sin agua, baja presión, con agua, fuga), cuántas veces se reportó cada problema de calidad y la hora del reporte más reciente de la colonia. Nunca se publican reportes individuales.
 
 **Textos libres:** la descripción de "Otro" y el comentario **son públicos**: la hoja de cada colonia muestra los 10 más recientes, con su estado y su hora, sin ningún dato de quién los escribió. Antes de devolverlos, la API oculta correos y números de teléfono (en la base queda el texto original). El formulario avisa que el texto se verá en el mapa y pide no escribir nombres, teléfonos ni direcciones. Si un comentario trae datos personales, se borra su texto de la base.
 
@@ -100,7 +100,7 @@ El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_
 | `GET /api/colonias?q=`                    | Buscador (`searchColonias`)            | Hasta 8 colonias cuyo nombre contiene `q` (sin importar acentos), con su `bbox`. `lng`/`lat` es el centro del mapa visible, para ordenar las homónimas por cercanía |
 | `WS /api/reports/ws`                      | `connectRealtime`                      | Envía `{ type: 'colonia_update', feature }` con el conteo nuevo de una colonia cada vez que alguien reporta                                       |
 | `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre           | Polígonos de colonias en MVT, zoom 9–16, con caché de 1 día                                                                                       |
-| `GET /api/reports/stats`                  | Disponible, el mapa aún no lo usa      | Totales vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua`                                                                                 |
+| `GET /api/reports/stats`                  | Resumen de reportes (`fetchStats`)     | Totales vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua`, `fugas`, y `historico` (reportes de suministro desde el inicio). El mapa solo usa `historico` |
 | `GET /api/health`                         | Monitoreo                              | `{ status: 'ok' }`                                                                                                                                |
 
 Reglas de `POST /api/reports`:
@@ -127,6 +127,7 @@ Forma de cada colonia en `/resumen`:
     "sin_agua": 3,
     "baja_presion": 1,
     "con_agua": 1,
+    "fugas": 0,
     "estado": "no"
   }
 }
@@ -136,7 +137,7 @@ Forma de cada colonia en `/resumen`:
 
 | Tabla      | Quién la crea                                              | Columnas                                                                                                |
 | ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `reports`  | La API al arrancar (`create_all`) más migraciones manuales | `id` (UUID), `colonia_id` (FK a `colonias.id`), `status` (`no`/`baja`/`ok`), `quality` (arreglo de texto), `quality_other` (≤ 80), `comment` (≤ 280), `created_at` (timestamptz) |
+| `reports`  | La API al arrancar (`create_all`) más migraciones manuales | `id` (UUID), `colonia_id` (FK a `colonias.id`), `status` (`no`/`baja`/`ok`/`fuga`), `quality` (arreglo de texto), `quality_other` (≤ 80), `comment` (≤ 280), `created_at` (timestamptz) |
 | `colonias` | `scripts/load_colonias.sh` (en `aguajalisco-api`)          | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)    |
 
 ### Tiempo real
@@ -163,6 +164,7 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   │   ├── report-sheet.ts      # Formulario de reporte en 3 pasos (estado, calidad, detalles, confirmación)
 │   │   ├── colonia-sheet.ts     # Hoja informativa al tocar una colonia (conteos y comentarios)
 │   │   ├── colonia-search.ts    # Buscador de colonias (lupa que despliega la barra)
+│   │   ├── stats-panel.ts       # Resumen de reportes para el ciudadano (24 h e histórico)
 │   │   ├── config.ts            # URLs, límites de la ZMG/Jalisco, colores, etiquetas de estado y calidad
 │   │   ├── types.ts             # Tipos espejo de los schemas de aguajalisco-api
 │   │   ├── api.ts               # GET /resumen, GET /colonias (búsqueda y detalle), POST /reports y WebSocket
@@ -182,10 +184,12 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 ## Interfaz del mapa
 
 - **Hoja de colonia:** al tocar una colonia. Muestra nombre, municipio y CP, el estado dominante ("Mayoría sin agua"), la fecha del último reporte en hora de Guadalajara ("Hoy a las 11:16 a.m."), una barra con los conteos por estado y los problemas de calidad reportados. En el teléfono es una hoja inferior; en tablet y escritorio, un panel a la izquierda.
+- **Resumen de reportes:** arriba del panel de abajo, una línea con un punto "en vivo": "8 reportes en las últimas 24 h · 4 colonias". *Resumen* despliega la barra y los conteos por estado con porcentaje, colonias con reportes, colonias mayormente sin agua, reportes desde el inicio y la hora de la última actualización. Las cifras de 24 h se calculan con el mismo resumen del mapa, así que cambian con cada reporte en vivo. Por ahora no cuenta las fugas.
 - **Buscador de colonias:** la lupa junto al logo despliega una barra de búsqueda; se cierra con la misma lupa, con ✕, con `Esc` o tocando el mapa. Se navega con flechas y Enter. Al elegir una colonia se abre su hoja y el mapa la acerca sin que la tape la hoja. En el teléfono el logo se oculta mientras la barra está abierta.
-- **Clusters y mapa de calor:** los puntos de colonias cercanas se agrupan hasta zoom 13 en un círculo con la suma de reportes, del color del estado más frecuente; tocarlo acerca el mapa. El mapa de calor (morado, para no confundirse con los colores de suministro) pesa los problemas: *sin agua* cuenta 1 y *baja presión* 0.5; se desvanece de cerca, donde ya se ven las colonias coloreadas. Ambos se calculan con un punto interior de cada colonia, nunca con la ubicación de quien reportó, y se pueden apagar en el botón de capas.
+- **Fugas de agua:** cuarto estado del reporte, en cian. Cada fuga cuenta como un reporte más de la colonia: suma en su círculo y en los grupos, y si es el estado más reportado, el círculo y la colonia se pintan de cian. En empate entre estados gana el más grave: sin agua, fuga, baja presión, con agua.
+- **Clusters y mapa de calor:** los puntos de colonias cercanas se agrupan hasta zoom 13 en un círculo con la suma de reportes, del color del estado más frecuente; tocarlo acerca el mapa. El mapa de calor (morado, para no confundirse con los colores de suministro) pesa los problemas: *sin agua* cuenta 1, *baja presión* y *fuga* 0.5; se desvanece de cerca, donde ya se ven las colonias coloreadas. Ambos se calculan con un punto interior de cada colonia, nunca con la ubicación de quien reportó, y se pueden apagar en el botón de capas.
 - **Formulario de reporte:** hoja de pantalla completa en el teléfono y panel lateral de 400 px en pantallas de 768 px o más, para que el mapa siga visible.
-- **Colores:** los de suministro (verde, amarillo, rojo) solo significan suministro; la calidad usa siempre una familia naranja para no confundir "turbia" con "baja presión". El color nunca es la única señal: cada estado lleva su texto y los problemas marcados llevan "✓".
+- **Colores:** los de estado (verde, amarillo, rojo y cian para fugas) solo significan estado; la calidad usa siempre una familia naranja para no confundir "turbia" con "baja presión". El color nunca es la única señal: cada estado lleva su texto y los problemas marcados llevan "✓".
 - **Accesibilidad:** estados y problemas son inputs nativos (radio y checkbox), se puede usar todo con teclado, `Esc` cierra la hoja de arriba y el foco vuelve al botón que la abrió. Objetivos táctiles de 44 px como mínimo y campos de texto de 16 px para que iOS no haga zoom.
 - **Tipografía:** Bricolage Grotesque (títulos) y Public Sans (formularios), desde Google Fonts.
 
@@ -226,6 +230,12 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 - **Buscador de colonias** con el endpoint nuevo `GET /api/colonias?q=`.
 - **Clusters y mapa de calor** de los reportes; las colonias siguen coloreadas por estado.
 - **Comentarios públicos:** la hoja de colonia muestra los últimos 10 comentarios y textos de "Otro", con correos y teléfonos ocultos. El paso *Detalles* del formulario ahora avisa que el texto será público.
+
+### Fugas de agua
+
+- **Nuevo estado `fuga`** en el formulario (las cuatro opciones en cuadrícula de 2 × 2), en la hoja de colonia, en los círculos y clusters de cada colonia y en el mapa de calor.
+- **Resumen de reportes** en el panel de abajo (24 h, desglose, colonias e histórico), sin contar fugas por ahora.
+- **Requiere** correr en la base `scripts/migrations/2026-10-12-status-fuga.sql` de `wawhere-api` antes de desplegar; sin eso la API responde `500` al guardar una fuga.
 
 ## Deploy
 

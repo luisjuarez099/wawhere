@@ -1,6 +1,6 @@
 import type { Feature, FeatureCollection, Point } from 'geojson'
 
-export type ReportStatus = 'no' | 'baja' | 'ok'
+export type ReportStatus = 'no' | 'baja' | 'ok' | 'fuga'
 
 // Mismos valores que QualityEnum en wawhere-api/app/schemas/report.py
 export type ReportQuality = 'mal_olor' | 'turbia' | 'sedimentos' | 'otro'
@@ -32,6 +32,7 @@ export interface ColoniaResumenProps {
   sin_agua: number
   baja_presion: number
   con_agua: number
+  fugas: number
   estado: ReportStatus // el status con más reportes (en empate, el más grave)
 }
 
@@ -64,6 +65,16 @@ export interface ColoniaComentario {
   quality_other: string | null
   comment: string | null
   created_at: string
+}
+
+// GET /api/reports/stats: totales vigentes y el histórico
+export interface StatsResponse {
+  total: number
+  sin_agua: number
+  baja_presion: number
+  con_agua: number
+  fugas: number
+  historico: number // reportes de suministro desde el inicio (sin fugas)
 }
 
 // Respuesta de GET /api/colonias/{id}: conteos de los reportes activos de una colonia

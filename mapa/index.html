@@ -96,6 +96,27 @@
       id="report-launcher"
       aria-labelledby="launcher-title"
     >
+      <div class="stats" id="stats" hidden>
+        <button type="button" class="stats-toggle" id="stats-toggle" aria-expanded="false" aria-controls="stats-detail">
+          <span class="stats-live" aria-hidden="true"></span>
+          <span class="stats-summary" id="stats-summary"></span>
+          <span class="stats-more">
+            Resumen
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+          </span>
+        </button>
+        <div class="stats-detail" id="stats-detail" hidden>
+          <div class="cs-bar" id="stats-bar" role="img"></div>
+          <ul class="cs-counts" id="stats-counts"></ul>
+          <dl class="stats-facts">
+            <div><dt>Colonias con reportes</dt><dd id="stats-colonias">0</dd></div>
+            <div><dt>Colonias mayormente sin agua</dt><dd id="stats-sin-agua">0</dd></div>
+            <div><dt>Reportes desde el inicio</dt><dd id="stats-historico">—</dd></div>
+          </dl>
+          <p class="stats-updated" id="stats-updated"></p>
+        </div>
+      </div>
+
       <h1 class="report-title" id="launcher-title">
         ¿Cómo está el agua en tu colonia?
       </h1>
@@ -194,6 +215,10 @@
                 <label class="status-option">
                   <input class="sr-input" type="radio" name="status" value="no" />
                   <span class="status-dot" style="--dot: var(--c-no)" aria-hidden="true"></span>Sin agua
+                </label>
+                <label class="status-option">
+                  <input class="sr-input" type="radio" name="status" value="fuga" />
+                  <span class="status-dot" style="--dot: var(--c-fuga)" aria-hidden="true"></span>Fuga de agua
                 </label>
               </div>
             </fieldset>

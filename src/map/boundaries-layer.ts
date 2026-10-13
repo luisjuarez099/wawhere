@@ -43,6 +43,7 @@ const estadoColor: ExpressionSpecification = [
   'match', ['feature-state', 'estado'],
   'no', STATUS_COLORS.no,
   'baja', STATUS_COLORS.baja,
+  'fuga', STATUS_COLORS.fuga,
   STATUS_COLORS.ok,
 ]
 
