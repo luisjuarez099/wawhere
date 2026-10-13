@@ -1,9 +1,9 @@
 import { API_URL } from './config'
-import type { ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection } from './types'
+import type { ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection } from './types'
 
-/** Error HTTP con el status, para mostrar un mensaje distinto según el caso (422, 429…). */
+/** Error HTTP con el status y el detail, para mostrar un mensaje distinto según el caso (422, 429…). */
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public detail?: unknown) {
     super(message)
   }
 }
@@ -15,13 +15,24 @@ export async function fetchResumen(signal?: AbortSignal): Promise<ResumenCollect
   return res.json()
 }
 
+/** Detalle de una colonia: suministro, calidad y último reporte (solo reportes activos). */
+export async function getColoniaDetalle(id: number, signal?: AbortSignal): Promise<ColoniaDetalle> {
+  const res = await fetch(`${API_URL}/api/colonias/${id}`, { signal })
+  if (!res.ok) throw new ApiError(res.status, `GET /api/colonias/${id} → ${res.status}`)
+  return res.json()
+}
+
 export async function createReport(body: ReportCreate): Promise<Report> {
   const res = await fetch(`${API_URL}/api/reports`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new ApiError(res.status, `POST /api/reports → ${res.status}`)
+  if (!res.ok) {
+    // detail string → colonia inválida; detail array → validación de campos (Pydantic)
+    const detail = await res.json().then((b) => b?.detail, () => undefined)
+    throw new ApiError(res.status, `POST /api/reports → ${res.status}`, detail)
+  }
   return res.json()
 }
 

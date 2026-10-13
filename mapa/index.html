@@ -27,7 +27,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Inter:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;600&family=Public+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
 
@@ -55,26 +55,176 @@
 
     <section
       class="report-panel"
-      id="report-panel"
-      aria-labelledby="report-title"
+      id="report-launcher"
+      aria-labelledby="launcher-title"
     >
-      <h1 class="report-title" id="report-title">
+      <h1 class="report-title" id="launcher-title">
         ¿Cómo está el agua en tu colonia?
       </h1>
-      <p class="report-target" id="report-target" role="status" hidden></p>
-      <div class="report-buttons">
-        <button type="button" class="report-btn" data-status="no" disabled>
-          <span class="dot" style="background: var(--red)"></span>Sin agua
+      <p class="report-target" id="report-target" hidden></p>
+      <button type="button" class="btn-primary" id="report-open" disabled>
+        Reportar aquí
+      </button>
+      <p class="report-msg" id="launcher-msg" role="status"></p>
+    </section>
+
+    <section class="colonia-sheet" id="colonia-sheet" aria-labelledby="cs-nombre" hidden>
+      <div class="colonia-sheet-handle" aria-hidden="true"></div>
+
+      <header class="cs-header">
+        <div class="cs-title">
+          <h2 class="sheet-title" id="cs-nombre" tabindex="-1"></h2>
+          <p class="cs-sub" id="cs-sub"></p>
+        </div>
+        <span class="cs-badge" id="cs-badge" hidden></span>
+        <button type="button" class="icon-btn" id="cs-close" aria-label="Cerrar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
-        <button type="button" class="report-btn" data-status="baja" disabled>
-          <span class="dot" style="background: var(--yellow)"></span>Baja
-          presión
-        </button>
-        <button type="button" class="report-btn" data-status="ok" disabled>
-          <span class="dot" style="background: var(--green)"></span>Con agua
-        </button>
-      </div>
-      <p class="report-msg" id="report-msg" role="status"></p>
+      </header>
+
+      <p class="cs-ultimo" id="cs-ultimo-row" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+        <span id="cs-ultimo"></span>
+      </p>
+
+      <section class="cs-block" id="cs-supply" hidden>
+        <h3 class="cs-label" id="cs-supply-label"></h3>
+        <div class="cs-bar" id="cs-bar" role="img"></div>
+        <ul class="cs-counts" id="cs-counts"></ul>
+      </section>
+
+      <section class="cs-block" id="cs-quality" hidden>
+        <h3 class="cs-label">Calidad reportada</h3>
+        <ul class="cs-chips" id="cs-chips"></ul>
+      </section>
+
+      <p class="cs-empty" id="cs-empty" hidden></p>
+      <p class="form-msg" id="cs-error" role="status" aria-live="polite"></p>
+
+      <button type="button" class="btn-primary" id="cs-report">Reportar en esta colonia</button>
+      <p class="hint cs-disclaimer">Percepción reportada por vecinos, no es un análisis de laboratorio.</p>
+    </section>
+
+    <div class="sheet-backdrop" id="report-backdrop" hidden></div>
+
+    <section
+      class="sheet"
+      id="report-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="report-title"
+      hidden
+    >
+      <form class="sheet-form" id="report-form" novalidate>
+        <div class="sheet-body">
+          <!-- Paso 1 · Nuevo reporte -->
+          <div class="sheet-step" data-step="main">
+            <header class="sheet-header">
+              <h2 class="sheet-title" id="report-title" tabindex="-1">Nuevo reporte</h2>
+              <button type="button" class="icon-btn" data-action="close" aria-label="Cerrar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </header>
+
+            <div class="colonia-card">
+              <div class="colonia-card-row">
+                <span class="colonia-card-name">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>
+                  <span id="report-colonia"></span>
+                </span>
+                <button type="button" class="link-btn" data-action="change-colonia">Cambiar</button>
+              </div>
+              <p class="hint" id="report-colonia-hint"></p>
+            </div>
+
+            <fieldset class="field">
+              <legend class="field-label">¿Cómo está el agua?</legend>
+              <div class="status-grid">
+                <label class="status-option">
+                  <input class="sr-input" type="radio" name="status" value="ok" />
+                  <span class="status-dot" style="--dot: var(--c-ok)" aria-hidden="true"></span>Con agua
+                </label>
+                <label class="status-option">
+                  <input class="sr-input" type="radio" name="status" value="baja" />
+                  <span class="status-dot" style="--dot: var(--c-baja)" aria-hidden="true"></span>Baja presión
+                </label>
+                <label class="status-option">
+                  <input class="sr-input" type="radio" name="status" value="no" />
+                  <span class="status-dot" style="--dot: var(--c-no)" aria-hidden="true"></span>Sin agua
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="field" id="quality-field" hidden disabled>
+              <legend class="field-label">
+                ¿Notas algo en el agua? <span class="field-meta">Opcional · varias</span>
+              </legend>
+              <div class="chips">
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="mal_olor" />Mal olor</label>
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="turbia" />Turbia</label>
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="sedimentos" />Sedimentos o color extraño</label>
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="otro" />Otro</label>
+              </div>
+            </fieldset>
+
+            <button type="button" class="details-btn" data-action="details">
+              <span id="details-btn-label">Agregar detalles (opcional)</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+          </div>
+
+          <!-- Paso 2 · Detalles -->
+          <div class="sheet-step" data-step="details" hidden>
+            <button type="button" class="back-btn" data-action="back">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+              <span id="report-breadcrumb"></span>
+            </button>
+
+            <h2 class="sheet-title" tabindex="-1">Detalles (opcional)</h2>
+
+            <div class="field" id="quality-other-field" hidden>
+              <label class="field-label field-label--sm" for="quality-other">¿Qué otra cosa notas?</label>
+              <input class="input" id="quality-other" name="quality_other" type="text" maxlength="80" placeholder="Ej. sabe mucho a cloro" autocomplete="off" disabled />
+            </div>
+
+            <div class="field">
+              <label class="field-label field-label--sm" for="comment">Comentario</label>
+              <textarea class="textarea" id="comment" name="comment" rows="4" maxlength="280" placeholder="¿Desde cuándo? ¿Algo más que ayude a entender la situación?" aria-describedby="comment-hint comment-count"></textarea>
+              <div class="field-foot">
+                <span id="comment-hint">No pongas nombres ni direcciones.</span>
+                <span id="comment-count">0 / 280</span>
+              </div>
+            </div>
+
+            <p class="notice">Los comentarios no se publican: nos ayudan a mejorar las categorías del mapa.</p>
+          </div>
+
+          <!-- Paso 3 · Confirmación -->
+          <div class="sheet-step sheet-step--done" data-step="done" hidden>
+            <div class="done-icon" aria-hidden="true">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </div>
+            <div class="done-text">
+              <h2 class="sheet-title sheet-title--lg" tabindex="-1">Tu reporte se sumó</h2>
+              <p class="done-summary" id="done-summary"></p>
+            </div>
+            <!-- Tarjeta "Calidad en tu colonia": oculta hasta que exista en backend -->
+            <div class="done-actions">
+              <button type="button" class="btn-primary" data-action="share">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4" /></svg>
+                Avisar a mis vecinos
+              </button>
+              <button type="button" class="btn-secondary" data-action="close">Volver al mapa</button>
+              <p class="form-msg form-msg--ok" id="done-msg" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="sheet-footer" id="report-footer">
+          <p class="form-msg" id="report-msg" role="status" aria-live="polite"></p>
+          <button type="submit" class="btn-primary" id="report-submit" disabled>Enviar reporte</button>
+        </footer>
+      </form>
     </section>
 
     <script type="module" src="/src/map/main.ts"></script>

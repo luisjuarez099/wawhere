@@ -1,4 +1,4 @@
-import type { ReportStatus } from './types'
+import type { ReportQuality, ReportStatus } from './types'
 
 // Vacío = mismo origen (en dev lo resuelve el proxy de Vite)
 export const API_URL: string = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
@@ -37,3 +37,17 @@ export const STATUS_LABELS: Record<ReportStatus, string> = {
   baja: 'Baja presión',
   ok: 'Con agua',
 }
+
+// Orden en que se muestran los chips de calidad
+export const QUALITY_ORDER: ReportQuality[] = ['mal_olor', 'turbia', 'sedimentos', 'otro']
+
+export const QUALITY_LABELS: Record<ReportQuality, string> = {
+  mal_olor: 'Mal olor',
+  turbia: 'Turbia',
+  sedimentos: 'Sedimentos o color extraño',
+  otro: 'Otro',
+}
+
+// Deben coincidir con max_length en wawhere-api/app/schemas/report.py
+export const QUALITY_OTHER_MAX = 80
+export const COMMENT_MAX = 280

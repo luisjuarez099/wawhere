@@ -1,6 +1,6 @@
 # aguajalisco
 
-Mapa comunitario del estado del servicio de agua en la Zona Metropolitana de Guadalajara (ZMG). Los vecinos reportan cómo está el agua en su colonia (**sin agua**, **baja presión** o **con agua**) y el mapa muestra cuántos reportes hay en cada colonia en las últimas horas.
+Mapa comunitario del estado del servicio de agua en la Zona Metropolitana de Guadalajara (ZMG). Los vecinos reportan cómo está el agua en su colonia (**sin agua**, **baja presión** o **con agua**) y, si quieren, cómo sale (turbia, con mal olor, con sedimentos u otro problema). El mapa muestra cuántos reportes hay en cada colonia en las últimas horas.
 
 Es gratis, no pide registro y los reportes son anónimos. Está en fase de pruebas.
 
@@ -18,23 +18,35 @@ Saber rápido si el problema de agua es solo en tu casa o en toda tu colonia, y 
 
 ## Cómo funciona
 
-1. La persona abre el mapa y toca **Sin agua**, **Baja presión** o **Con agua**.
-2. El navegador averigua en qué colonia está, de una de dos formas:
-   - **Con su ubicación (GPS):** se usa solo dentro del navegador para encontrar la colonia en el mapa. Las coordenadas no se envían al servidor.
-   - **Tocando su colonia en el mapa**, sin compartir ubicación.
-3. Al servidor solo llegan dos datos: el número de colonia y el estado del agua.
+1. La persona elige su colonia, de una de dos formas:
+   - **Tocando su colonia en el mapa**, sin compartir ubicación. Se abre una hoja con la información de la colonia (conteos por estado, calidad reportada y hora del último reporte) y el botón **Reportar en esta colonia**.
+   - **Con el botón "Reportar aquí" (GPS):** la ubicación se usa solo dentro del navegador para encontrar la colonia en el mapa. Las coordenadas no se envían al servidor.
+2. Se abre el formulario de reporte en tres pasos:
+   1. **Nuevo reporte:** elige **Con agua**, **Baja presión** o **Sin agua**. Si eligió *Con agua* o *Baja presión*, puede marcar (opcional) cómo sale el agua: *Mal olor*, *Turbia*, *Sedimentos o color extraño* u *Otro*.
+   2. **Detalles (opcional):** una descripción corta si marcó *Otro* y un comentario libre.
+   3. **Confirmación:** resumen de lo enviado y la opción de avisar a los vecinos (compartir el enlace del mapa).
+3. Al servidor llegan el número de colonia, el estado del agua y, si los llenó, la calidad y los textos opcionales.
 4. El mapa de todas las personas conectadas se actualiza al instante con el nuevo conteo de esa colonia.
-5. Los reportes vencen a las 24 horas y se borran.
+5. Los reportes vencen a las 24 horas (configurable) y se borran.
+
+El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar reporte**.
 
 ## Qué información obtenemos
 
-| Se guarda                                           | No se guarda                      |
-| --------------------------------------------------- | --------------------------------- |
-| Colonia del reporte (su id en la tabla de colonias) | Coordenadas o ubicación exacta    |
-| Estado del agua: `no`, `baja` u `ok`                | Nombre, correo, teléfono o cuenta |
-| Fecha y hora del reporte                            | Dirección o calle                 |
+| Se guarda                                                                 | No se guarda                      |
+| ------------------------------------------------------------------------- | --------------------------------- |
+| Colonia del reporte (su id en la tabla de colonias)                       | Coordenadas o ubicación exacta    |
+| Estado del agua: `no`, `baja` u `ok`                                      | Nombre, correo, teléfono o cuenta |
+| Calidad percibida (opcional): `mal_olor`, `turbia`, `sedimentos`, `otro`  | Dirección o calle                 |
+| Descripción de "Otro" (opcional, máx. 80 caracteres)                      | Fotos                             |
+| Comentario (opcional, máx. 280 caracteres)                                |                                   |
+| Fecha y hora del reporte                                                  |                                   |
 
-**Qué se publica:** solo conteos por colonia. Por cada colonia con reportes vigentes, el mapa muestra el total y el desglose (sin agua, baja presión, con agua). Nunca se publican reportes individuales ni su hora exacta.
+**Qué se publica:** solo conteos por colonia. Por cada colonia con reportes vigentes, el mapa muestra el total, el desglose por estado (sin agua, baja presión, con agua), cuántas veces se reportó cada problema de calidad y la hora del reporte más reciente de la colonia. Nunca se publican reportes individuales.
+
+**Textos libres:** la descripción de "Otro" y el comentario **no se publican ni se devuelven** en ninguna respuesta de la API. Se guardan solo para mejorar las categorías del mapa. El formulario pide no escribir nombres ni direcciones.
+
+**Calidad:** es la percepción de los vecinos, no un análisis de laboratorio.
 
 **Cuánto tiempo:** 24 horas (`REPORT_EXPIRY_HOURS`). Después, un proceso automático borra los reportes de la base de datos.
 
@@ -83,11 +95,22 @@ El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_
 | Endpoint                                  | Quién lo usa                           | Qué hace                                                                                                                                          |
 | ----------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/reports/resumen`                | `fetchResumen`, al cargar y cada 2 min | GeoJSON con un punto por colonia y sus conteos vigentes                                                                                           |
-| `POST /api/reports`                       | `createReport`, al tocar un botón      | Body: `{ colonia_id, status }`. Responde `201`, `422` si la colonia no existe o está fuera de la ZMG, y `429` si hay demasiados reportes seguidos |
+| `POST /api/reports`                       | `createReport`, al enviar el reporte   | Body: `{ colonia_id, status, quality?, quality_other?, comment? }`. Responde `201` (con `quality`, sin los textos libres), `422` y `429` (ver abajo) |
+| `GET /api/colonias/{id}`                  | Hoja de colonia (`getColoniaDetalle`)  | Conteos de los reportes activos de una colonia: por estado, por calidad y fecha del último reporte. **Pendiente en la API**; mientras no exista, la hoja usa los conteos de `/resumen` |
 | `WS /api/reports/ws`                      | `connectRealtime`                      | Envía `{ type: 'colonia_update', feature }` con el conteo nuevo de una colonia cada vez que alguien reporta                                       |
 | `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre           | Polígonos de colonias en MVT, zoom 9–16, con caché de 1 día                                                                                       |
 | `GET /api/reports/stats`                  | Disponible, el mapa aún no lo usa      | Totales vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua`                                                                                 |
 | `GET /api/health`                         | Monitoreo                              | `{ status: 'ok' }`                                                                                                                                |
+
+Reglas de `POST /api/reports`:
+
+| Campo           | Reglas                                                                               |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `quality`       | Máximo 4 valores sin repetir. Debe ir vacío si `status` es `no`                       |
+| `quality_other` | Máximo 80 caracteres. Solo se acepta si `quality` incluye `otro`, y en ese caso es obligatorio |
+| `comment`       | Máximo 280 caracteres                                                                 |
+
+El `422` trae `detail` como **texto** cuando la colonia no es válida o está fuera de la ZMG, y como **arreglo** (errores de validación) cuando falla alguno de los campos anteriores. El frontend muestra un mensaje distinto para cada caso.
 
 Forma de cada colonia en `/resumen`:
 
@@ -112,7 +135,7 @@ Forma de cada colonia en `/resumen`:
 
 | Tabla      | Quién la crea                                              | Columnas                                                                                                |
 | ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `reports`  | La API al arrancar (`create_all`) más una migración manual | `id` (UUID), `colonia_id` (FK a `colonias.id`), `status` (`no`/`baja`/`ok`), `created_at` (timestamptz) |
+| `reports`  | La API al arrancar (`create_all`) más migraciones manuales | `id` (UUID), `colonia_id` (FK a `colonias.id`), `status` (`no`/`baja`/`ok`), `quality` (arreglo de texto), `quality_other` (≤ 80), `comment` (≤ 280), `created_at` (timestamptz) |
 | `colonias` | `scripts/load_colonias.sh` (en `aguajalisco-api`)          | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)    |
 
 ### Tiempo real
@@ -135,12 +158,14 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   │   ├── main.ts              # Links al mapa, FAQ, compartir
 │   │   └── landing.css
 │   ├── map/
-│   │   ├── main.ts              # Arma el mapa, controles, flujo de reporte y carga de datos
-│   │   ├── config.ts            # URLs, límites de la ZMG/Jalisco, colores y etiquetas
+│   │   ├── main.ts              # Arma el mapa, controles, selección de colonia, GPS y carga de datos
+│   │   ├── report-sheet.ts      # Formulario de reporte en 3 pasos (estado, calidad, detalles, confirmación)
+│   │   ├── colonia-sheet.ts     # Hoja informativa al tocar una colonia
+│   │   ├── config.ts            # URLs, límites de la ZMG/Jalisco, colores, etiquetas de estado y calidad
 │   │   ├── types.ts             # Tipos espejo de los schemas de aguajalisco-api
-│   │   ├── api.ts               # GET /resumen, POST /reports y WebSocket
+│   │   ├── api.ts               # GET /resumen, GET /colonias/{id}, POST /reports y WebSocket
 │   │   ├── resumen-store.ts     # Conteos por colonia (HTTP + WebSocket)
-│   │   ├── reports-layer.ts     # Círculos con conteo, colonias coloreadas y popup
+│   │   ├── reports-layer.ts     # Círculos con conteo y colonias coloreadas
 │   │   ├── boundaries-layer.ts  # Colonias (vector tiles), límites de Jalisco y municipios, búsqueda de colonia
 │   │   ├── basemaps.ts          # Mapas base: Claro, OpenStreetMap, Satélite
 │   │   ├── layer-controls.ts    # Botón de capas: mapa base y capas visibles
@@ -151,6 +176,14 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 ├── Dockerfile                   # Build con Node 22 + nginx
 └── nginx.conf
 ```
+
+## Interfaz del mapa
+
+- **Hoja de colonia:** al tocar una colonia. Muestra nombre, municipio y CP, el estado dominante ("Mayoría sin agua"), la fecha del último reporte en hora de Guadalajara ("Hoy a las 11:16 a.m."), una barra con los conteos por estado y los problemas de calidad reportados. En el teléfono es una hoja inferior; en tablet y escritorio, un panel a la izquierda.
+- **Formulario de reporte:** hoja de pantalla completa en el teléfono y panel lateral de 400 px en pantallas de 768 px o más, para que el mapa siga visible.
+- **Colores:** los de suministro (verde, amarillo, rojo) solo significan suministro; la calidad usa siempre una familia naranja para no confundir "turbia" con "baja presión". El color nunca es la única señal: cada estado lleva su texto y los problemas marcados llevan "✓".
+- **Accesibilidad:** estados y problemas son inputs nativos (radio y checkbox), se puede usar todo con teclado, `Esc` cierra la hoja de arriba y el foco vuelve al botón que la abrió. Objetivos táctiles de 44 px como mínimo y campos de texto de 16 px para que iOS no haga zoom.
+- **Tipografía:** Bricolage Grotesque (títulos) y Public Sans (formularios), desde Google Fonts.
 
 ## Desarrollo
 
@@ -171,6 +204,18 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 | `VITE_API_URL`             | mismo origen         | URL de `aguajalisco-api`                             |
 | `VITE_MAP_STYLE_URL`       | OpenFreeMap positron | Estilo del mapa base                                 |
 | `VITE_REPORT_EXPIRY_HOURS` | `24`                 | Debe coincidir con `REPORT_EXPIRY_HOURS` del backend |
+
+## Cambios recientes
+
+### Calidad del agua y hoja de colonia
+
+- **Reporte en 3 pasos:** tocar un estado ya no envía el reporte al instante; lo selecciona, y se envía con **Enviar reporte**. Se agregaron la calidad percibida (opcional), la descripción de "Otro" y un comentario.
+- **Validación en el navegador:** *Sin agua* oculta y deshabilita las opciones de calidad; la descripción de "Otro" solo se envía con *Otro* marcado y es obligatoria en ese caso; los textos tienen límite de caracteres. Así se evitan los `422` de validación.
+- **Mensajes de error:** se distinguen los dos tipos de `422` (colonia inválida o fuera de la ZMG vs. datos del formulario) y el `429`. La selección del usuario se conserva al fallar.
+- **Confirmación:** el resumen se arma con lo que devolvió la API. Incluye "Avisar a mis vecinos" (menú de compartir del teléfono o copiar enlace). El enlace compartido es el del mapa, sin datos del reporte.
+- **Hoja de colonia:** reemplaza el popup que aparecía al tocar una colonia. Usa `GET /api/colonias/{id}` y, si no responde, muestra los conteos de `/resumen`.
+- **Panel inferior:** ahora es un solo botón, "Reportar aquí" (GPS) o "Reportar en {colonia}" si hay una colonia elegida. Se oculta mientras la hoja de colonia está abierta.
+- **Pendiente (requiere backend):** el endpoint `GET /api/colonias/{id}`, selector Suministro/Calidad sobre el mapa, conteo de calidad en la confirmación con umbral mínimo de reportes, y fotos.
 
 ## Deploy
 

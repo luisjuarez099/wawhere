@@ -1,13 +1,21 @@
-import { Popup } from 'maplibre-gl'
-import type { ExpressionSpecification, GeoJSONSource, LngLatLike, Map as MapLibreMap } from 'maplibre-gl'
+import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import { COLONIA_SOURCE, COLONIA_SOURCE_LAYER } from './boundaries-layer'
-import { REPORT_EXPIRY_MS, STATUS_COLORS, STATUS_LABELS } from './config'
-import type { Colonia, ColoniaResumenProps, ReportStatus, ResumenCollection } from './types'
+import { STATUS_COLORS } from './config'
+import type { ResumenCollection } from './types'
 
 const SOURCE = 'resumen'
+const HEAT_SOURCE = 'resumen-calor'
 
-/** Capas que prende/apaga el control 🔢. */
-export const RESUMEN_LAYERS = ['resumen-circulo', 'resumen-numero'] as const
+export const CLUSTER_LAYER = 'resumen-grupo'
+
+/** Capas que prende/apaga "Número de reportes": grupos y círculos por colonia. */
+export const RESUMEN_LAYERS = [CLUSTER_LAYER, 'resumen-grupo-numero', 'resumen-circulo', 'resumen-numero'] as const
+
+/** Capa que prende/apaga "Mapa de calor". Va debajo de los círculos. */
+export const HEAT_LAYERS = ['resumen-calor'] as const
+
+// Hasta este zoom las colonias cercanas se agrupan en un solo círculo
+const CLUSTER_MAX_ZOOM = 13
 
 const estadoColor: ExpressionSpecification = [
   'match', ['get', 'estado'],
@@ -16,21 +24,117 @@ const estadoColor: ExpressionSpecification = [
   STATUS_COLORS.ok,
 ]
 
+// Estado del grupo: el que suma más reportes; en empate, el más grave (igual que la API por colonia)
+const grupoEstado: ExpressionSpecification = [
+  'case',
+  ['all', ['>=', ['get', 'sin_agua'], ['get', 'baja_presion']], ['>=', ['get', 'sin_agua'], ['get', 'con_agua']]], 'no',
+  ['>=', ['get', 'baja_presion'], ['get', 'con_agua']], 'baja',
+  'ok',
+]
+const grupoColor: ExpressionSpecification = [
+  'match', grupoEstado,
+  'no', STATUS_COLORS.no,
+  'baja', STATUS_COLORS.baja,
+  STATUS_COLORS.ok,
+]
+
+const sinGrupo: ExpressionSpecification = ['!', ['has', 'point_count']]
+const esGrupo: ExpressionSpecification = ['has', 'point_count']
+
 /**
- * Un círculo por colonia con el número de reportes vigentes, del color del
- * estado que más se reporta. El círculo va en un punto interior de la colonia,
- * no donde estaba nadie. Además tiñe el polígono de la colonia (feature-state).
+ * Reportes por colonia en tres capas, todas sobre el punto interior de cada
+ * colonia (nunca la ubicación de nadie):
+ * - Mapa de calor de los reportes de problemas (sin agua y baja presión).
+ * - Grupos: a zoom bajo, las colonias cercanas se juntan en un círculo con la
+ *   suma de sus reportes, del color del estado que más se reporta.
+ * - Círculo por colonia al acercarse, con su número de reportes.
+ * Además tiñe el polígono de cada colonia con su estado (feature-state).
  */
 export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => void {
+  const empty: ResumenCollection = { type: 'FeatureCollection', features: [] }
+
   map.addSource(SOURCE, {
     type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] },
+    data: empty,
+    cluster: true,
+    clusterRadius: 50,
+    clusterMaxZoom: CLUSTER_MAX_ZOOM,
+    // Cada grupo suma los conteos de sus colonias
+    clusterProperties: {
+      total: ['+', ['get', 'total']],
+      sin_agua: ['+', ['get', 'sin_agua']],
+      baja_presion: ['+', ['get', 'baja_presion']],
+      con_agua: ['+', ['get', 'con_agua']],
+    },
+  })
+  // Fuente aparte sin agrupar: el mapa de calor necesita cada colonia
+  map.addSource(HEAT_SOURCE, { type: 'geojson', data: empty })
+
+  map.addLayer({
+    id: 'resumen-calor',
+    type: 'heatmap',
+    source: HEAT_SOURCE,
+    maxzoom: 15,
+    paint: {
+      // Pesan los problemas: "con agua" no debe calentar una zona
+      'heatmap-weight': [
+        'interpolate', ['linear'],
+        ['+', ['get', 'sin_agua'], ['*', 0.5, ['get', 'baja_presion']]],
+        0, 0,
+        10, 1,
+      ],
+      'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 14, 2],
+      'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 9, 25, 11, 40, 14, 60],
+      // Morados: distintos de los colores de suministro (verde, amarillo, rojo)
+      'heatmap-color': [
+        'interpolate', ['linear'], ['heatmap-density'],
+        0, 'rgba(94, 60, 153, 0)',
+        0.2, 'rgba(158, 154, 200, 0.45)',
+        0.45, 'rgba(117, 107, 177, 0.6)',
+        0.7, 'rgba(84, 39, 143, 0.7)',
+        1, 'rgba(63, 0, 125, 0.8)',
+      ],
+      // Se desvanece al acercarse, cuando ya se ven las colonias
+      'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 12, 1, 15, 0],
+    },
+  })
+
+  map.addLayer({
+    id: CLUSTER_LAYER,
+    type: 'circle',
+    source: SOURCE,
+    filter: esGrupo,
+    paint: {
+      'circle-color': grupoColor,
+      'circle-radius': ['interpolate', ['linear'], ['get', 'total'], 2, 16, 20, 22, 100, 30],
+      'circle-stroke-width': 3,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-opacity': 0.9,
+    },
+  })
+
+  map.addLayer({
+    id: 'resumen-grupo-numero',
+    type: 'symbol',
+    source: SOURCE,
+    filter: esGrupo,
+    layout: {
+      'text-field': ['case', ['>', ['get', 'total'], 999], '999+', ['to-string', ['get', 'total']]],
+      'text-font': ['Noto Sans Regular'],
+      'text-size': 13,
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: {
+      'text-color': ['match', grupoEstado, 'baja', '#1d2327', '#fff'],
+    },
   })
 
   map.addLayer({
     id: 'resumen-circulo',
     type: 'circle',
     source: SOURCE,
+    filter: sinGrupo,
     paint: {
       'circle-color': estadoColor,
       // Crece con el número de reportes, sin tapar la colonia
@@ -44,6 +148,7 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
     id: 'resumen-numero',
     type: 'symbol',
     source: SOURCE,
+    filter: sinGrupo,
     layout: {
       'text-field': ['case', ['>', ['get', 'total'], 99], '99+', ['to-string', ['get', 'total']]],
       'text-font': ['Noto Sans Regular'],
@@ -57,8 +162,17 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
     },
   })
 
-  map.on('mouseenter', 'resumen-circulo', () => (map.getCanvas().style.cursor = 'pointer'))
-  map.on('mouseleave', 'resumen-circulo', () => (map.getCanvas().style.cursor = ''))
+  // Tocar un grupo acerca el mapa hasta que se separe
+  map.on('click', CLUSTER_LAYER, async (e) => {
+    const feature = e.features?.[0]
+    if (!feature || feature.geometry.type !== 'Point') return
+    const zoom = await map.getSource<GeoJSONSource>(SOURCE)!.getClusterExpansionZoom(feature.properties.cluster_id)
+    map.easeTo({ center: feature.geometry.coordinates as [number, number], zoom })
+  })
+  for (const layer of [CLUSTER_LAYER, 'resumen-circulo']) {
+    map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'))
+    map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''))
+  }
 
   // Colonias teñidas ahora mismo, para quitar el color a las que ya no tienen reportes
   const tenidas = new Set<number>()
@@ -84,11 +198,13 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
 
   // Agrupa varias actualizaciones en un solo setData por frame
   const source = map.getSource<GeoJSONSource>(SOURCE)!
+  const heatSource = map.getSource<GeoJSONSource>(HEAT_SOURCE)!
   let pending: ResumenCollection | null = null
   return (data) => {
     if (!pending) requestAnimationFrame(() => {
       if (pending) {
         source.setData(pending)
+        heatSource.setData(pending)
         syncTinte(pending)
       }
       pending = null
@@ -99,74 +215,4 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
 
 export function setLayersVisible(map: MapLibreMap, ids: readonly string[], visible: boolean): void {
   for (const id of ids) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
-}
-
-// ─── Popup de colonia ───
-
-const popup = new Popup({ closeButton: false, offset: 10, maxWidth: '240px' })
-const HORAS = Math.round(REPORT_EXPIRY_MS / 3_600_000)
-
-export function showColoniaPopup(
-  map: MapLibreMap,
-  lngLat: LngLatLike,
-  colonia: Colonia,
-  resumen?: ColoniaResumenProps,
-): void {
-  popup.setLngLat(lngLat).setDOMContent(popupContent(colonia, resumen)).addTo(map)
-}
-
-export function hideColoniaPopup(): void {
-  popup.remove()
-}
-
-// DOM con textContent: nunca se arma HTML con datos
-function popupContent(colonia: Colonia, r?: ColoniaResumenProps): HTMLElement {
-  const el = document.createElement('div')
-  el.className = 'report-popup'
-
-  const title = document.createElement('strong')
-  title.textContent = colonia.nombre || 'Colonia sin nombre'
-  el.append(title)
-
-  const lugar = [colonia.municipio, colonia.cp && `CP ${colonia.cp}`].filter(Boolean).join(' · ')
-  if (lugar) {
-    const muni = document.createElement('p')
-    muni.textContent = lugar
-    el.append(muni)
-  }
-
-  if (!r) {
-    const empty = document.createElement('p')
-    empty.textContent = `Sin reportes en las últimas ${HORAS} h.`
-    el.append(empty)
-    return el
-  }
-
-  const rows: [ReportStatus, number][] = [
-    ['no', r.sin_agua],
-    ['baja', r.baja_presion],
-    ['ok', r.con_agua],
-  ]
-  const list = document.createElement('ul')
-  list.className = 'popup-conteo'
-  for (const [status, count] of rows) {
-    const li = document.createElement('li')
-    const dot = document.createElement('span')
-    dot.className = 'dot'
-    dot.style.background = STATUS_COLORS[status]
-    const label = document.createElement('span')
-    label.textContent = STATUS_LABELS[status]
-    const n = document.createElement('b')
-    n.textContent = String(count)
-    li.append(dot, label, n)
-    list.append(li)
-  }
-  el.append(list)
-
-  const foot = document.createElement('p')
-  foot.className = 'popup-nota'
-  foot.textContent = `${r.total} ${r.total === 1 ? 'reporte' : 'reportes'} en las últimas ${HORAS} h`
-  el.append(foot)
-
-  return el
 }

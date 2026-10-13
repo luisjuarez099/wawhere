@@ -2,12 +2,15 @@ import type { Feature, FeatureCollection, Point } from 'geojson'
 
 export type ReportStatus = 'no' | 'baja' | 'ok'
 
+// Mismos valores que QualityEnum en wawhere-api/app/schemas/report.py
+export type ReportQuality = 'mal_olor' | 'turbia' | 'sedimentos' | 'otro'
 
 // Espejo de ReportResponse en wawhere-api/app/schemas/report.py
 export interface Report {
   id: string
   status: ReportStatus
   colonia_id: number
+  quality: ReportQuality[]
   created_at: string
 }
 
@@ -15,6 +18,9 @@ export interface Report {
 export interface ReportCreate {
   colonia_id: number
   status: ReportStatus
+  quality?: ReportQuality[]
+  quality_other?: string
+  comment?: string
 }
 
 // Propiedades de cada colonia en GET /api/reports/resumen
@@ -41,4 +47,18 @@ export interface Colonia {
   nombre: string
   municipio: string
   cp: string // código postal; vacío si la colonia no lo tiene
+}
+// Respuesta de GET /api/colonias/{id}: conteos de los reportes activos de una colonia
+export interface ColoniaDetalle {
+  colonia_id: number
+  nombre: string
+  municipio: string
+  cp: string | null
+  ventana_horas: number
+  total: number
+  status: Record<ReportStatus, number>
+  status_dominante: ReportStatus | null // null si no hay reportes o hay empate
+  quality: Record<ReportQuality, number>
+  quality_total: number // reportes con al menos un problema
+  ultimo_reporte: string | null // UTC
 }

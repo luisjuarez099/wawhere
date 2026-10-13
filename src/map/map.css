@@ -1,3 +1,43 @@
+:root {
+  /* Marca y texto (diseño "flujo de reporte") */
+  --c-primary: #145c8f;
+  --c-primary-hover: #0e4268;
+  --c-ink: #10232f;
+  --c-muted: #4a5b66;
+
+  /* Bordes y superficies */
+  --c-border: #d9e1e5;
+  --c-border-strong: #b9c6cd;
+  --c-surface: #fff;
+  --c-surface-tint: #eef4f8; /* tarjeta de colonia, estado elegido */
+  --c-surface-muted: #f1f4f6; /* botón cerrar, avisos */
+  --c-success-bg: #e3eff7; /* círculo del check */
+
+  /* Estado del suministro: los mismos colores que el mapa (tokens.css) */
+  --c-ok: var(--green);
+  --c-baja: var(--yellow);
+  --c-no: var(--red);
+
+  /* Calidad (naranja: distinto de los colores de suministro) */
+  --c-q-accent: #b4530f;
+  --c-q-bg: #fbebdd;
+  --c-q-text: #8a3b0b;
+
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --r-sheet: 22px;
+  --r-card: 14px;
+  --r-input: 12px;
+  --r-pill: 22px;
+
+  --tap: 44px; /* mínimo táctil de todo el flujo */
+  --btn-primary-h: 56px;
+
+  --shadow-sheet: 0 -4px 20px rgba(16, 35, 47, 0.15);
+  --overlay: rgba(16, 35, 47, 0.55);
+}
+
 html,
 body {
   height: 100%;
@@ -59,20 +99,6 @@ body {
   margin-right: 8px;
   border-radius: 50%;
   vertical-align: middle;
-}
-
-.report-popup {
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.report-popup p {
-  margin: 4px 0;
-}
-
-.report-popup time {
-  color: var(--muted);
-  font-size: 13px;
 }
 
 /* ─── Control de capas ─── */
@@ -158,40 +184,16 @@ body {
   padding: 14px 16px 10px;
 }
 
+.report-panel .btn-primary {
+  height: 52px;
+  font-size: 16px;
+}
+
 .report-title {
   margin: 0 0 10px;
   font-family: 'Bricolage Grotesque', system-ui, sans-serif;
   font-size: 17px;
   font-weight: 700;
-}
-
-.report-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.report-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  padding: 12px 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--text);
-  font: 600 15px/1.2 'Inter', system-ui, sans-serif;
-  cursor: pointer;
-}
-
-.report-btn:hover:not(:disabled) {
-  border-color: var(--text);
-}
-
-.report-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 .report-msg {
@@ -208,20 +210,6 @@ body {
 .report-msg--error {
   color: var(--red);
 }
-
-@media (max-width: 420px) {
-  .report-btn {
-    flex-direction: column;
-    gap: 6px;
-    font-size: 14px;
-  }
-
-  .report-btn .dot {
-    margin-right: 0;
-  }
-}
-
-/* ─── Agregar al final de src/map/map.css ─── */
 
 /* Colonia elegida tocando el mapa */
 .report-target {
@@ -248,34 +236,764 @@ body {
   outline-offset: 2px;
 }
 
-/* Desglose de reportes en el popup de colonia */
-.popup-conteo {
-  list-style: none;
-  margin: 0.4rem 0;
-  padding: 0;
+/* ─── Hoja de reporte ─── */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: var(--overlay);
 }
 
-.popup-conteo li {
+.sheet {
+  position: fixed;
+  inset: max(48px, env(safe-area-inset-top)) 0 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  box-shadow: var(--shadow-sheet);
+}
+
+.sheet[hidden],
+.sheet-backdrop[hidden],
+.sheet-step[hidden],
+.field[hidden],
+.sheet-footer[hidden] {
+  display: none;
+}
+
+body.sheet-open {
+  overflow: hidden; /* evita que el mapa se mueva detrás */
+}
+
+.sheet-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px;
+}
+
+.sheet-step {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sheet-step[data-step='details'] {
+  gap: 18px;
+}
+
+.sheet-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
+  background: var(--c-surface);
+}
+
+.sheet-header {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.1rem 0;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.popup-conteo b {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
+.sheet-title {
+  margin: 0;
+  font: 700 22px/1.2 var(--font-display);
 }
 
-.popup-conteo .dot {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
+.sheet-title--lg {
+  font-size: 28px;
+}
+
+.sheet-title:focus {
+  outline: none;
+}
+
+/* ─── Botones base ─── */
+
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: var(--c-surface-muted);
+  color: var(--c-ink);
+  cursor: pointer;
+}
+
+.link-btn {
+  height: var(--tap);
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--c-primary);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-ink);
+  font: 600 15px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: var(--r-card);
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  height: var(--btn-primary-h);
+  border: 0;
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 17px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--c-primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  height: 52px;
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-size: 16px;
+}
+
+:is(.icon-btn, .link-btn, .back-btn, .btn-primary, .btn-secondary, .details-btn):focus-visible {
+  outline: 3px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+/* ─── Tarjeta de colonia ─── */
+
+.colonia-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--r-card);
+  background: var(--c-surface-tint);
+}
+
+.colonia-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.colonia-card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.colonia-card-name > svg {
   flex: none;
 }
 
-.popup-nota {
+.colonia-card-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hint {
   margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+/* ─── Campos ─── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.field-label--sm {
+  font-size: 15px;
+}
+
+.field-meta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--c-muted);
+}
+
+/* Input visualmente oculto, pero accesible y enfocable */
+.sr-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─── Botones de estado ─── */
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.status-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 88px;
+  padding: 8px 4px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-card);
+  background: var(--c-surface);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* box-shadow en vez de borde de 2 px, para que la tarjeta no "salte" al seleccionarla */
+.status-option:has(input:checked) {
+  border-color: var(--c-primary);
+  box-shadow: inset 0 0 0 1px var(--c-primary);
+  background: var(--c-surface-tint);
+}
+
+.status-option:has(input:focus-visible) {
+  outline: 3px solid var(--c-primary);
+  outline-offset: 2px;
+}
+
+.status-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.status-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+/* ─── Chips de calidad ─── */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip:has(input:checked) {
+  border-color: var(--c-q-accent);
+  box-shadow: inset 0 0 0 1px var(--c-q-accent);
+  background: var(--c-q-bg);
+  color: var(--c-q-text);
+  font-weight: 600;
+}
+
+.chip:has(input:checked)::before {
+  content: '✓';
+  content: '✓' / '';
+  margin-right: 6px;
+}
+
+.chip:has(input:focus-visible) {
+  outline: 3px solid var(--c-q-accent);
+  outline-offset: 2px;
+}
+
+/* ─── Botón "Agregar detalles" ─── */
+
+.details-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px dashed var(--c-border-strong);
+  border-radius: var(--r-card);
+  background: none;
+  color: var(--c-ink);
+  font: 500 15px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.details-btn[data-attention] {
+  border-style: solid;
+  border-color: var(--c-q-accent);
+  color: var(--c-q-text);
+  font-weight: 600;
+}
+
+/* ─── Inputs ─── */
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-input);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  /* 16 px y no 15 px como en el diseño: con menos, iOS hace zoom al enfocar */
+  font: 16px/1.4 var(--font-body);
+}
+
+.input {
+  height: 48px;
+  padding: 0 14px;
+}
+
+.textarea {
+  min-height: 112px;
+  padding: 12px 14px;
+  resize: none;
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 1px;
+  border-color: var(--c-primary);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: #7a8a94;
+}
+
+.field-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.notice {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-input);
+  background: var(--c-surface-muted);
+  font-size: 12px;
+  color: var(--c-muted);
+}
+
+.form-msg {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-no);
+  text-align: center;
+}
+
+.form-msg--ok {
+  color: var(--c-primary);
+}
+
+.form-msg:empty {
+  display: none;
+}
+
+/* ─── Confirmación ─── */
+
+.sheet-step--done {
+  min-height: 100%;
+  padding-top: 48px;
+  gap: 24px;
+}
+
+.done-icon {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--c-success-bg);
+}
+
+.done-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.done-summary {
+  margin: 0;
+  font-size: 15px;
+  color: var(--c-muted);
+}
+
+.done-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ─── Hoja de colonia ─── */
+
+.colonia-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 75dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 20px calc(16px + env(safe-area-inset-bottom));
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-family: var(--font-body);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  box-shadow: var(--shadow-sheet);
+}
+
+.colonia-sheet[hidden],
+.colonia-sheet [hidden] {
+  display: none;
+}
+
+/* La hoja de colonia ya trae "Reportar en esta colonia": un solo botón principal */
+body.colonia-open .report-panel {
+  display: none;
+}
+
+.colonia-sheet[aria-busy='true'] .cs-block {
+  opacity: 0.6;
+}
+
+.colonia-sheet-handle {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  flex: none;
+  border-radius: 2px;
+  background: var(--c-border-strong);
+}
+
+.cs-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cs-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-title .sheet-title {
+  overflow-wrap: anywhere;
+}
+
+.cs-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--c-muted);
+}
+
+.cs-badge {
+  flex: none;
+  align-self: center;
+  padding: 6px 10px;
+  border-radius: var(--r-pill);
+  background: var(--c-surface-muted);
+  color: var(--c-ink);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Punto de color + texto: el color nunca es la única señal */
+.cs-badge[data-status]::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--badge);
+}
+
+.cs-badge[data-status='no'] {
+  --badge: var(--c-no);
+}
+
+.cs-badge[data-status='baja'] {
+  --badge: var(--c-baja);
+}
+
+.cs-badge[data-status='ok'] {
+  --badge: var(--c-ok);
+}
+
+.cs-ultimo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-muted);
+}
+
+.cs-ultimo > svg {
+  flex: none;
+}
+
+.cs-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.cs-label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-muted);
+}
+
+.cs-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--c-surface-muted);
+}
+
+.cs-bar > span {
+  background: var(--seg);
+}
+
+.cs-counts,
+.cs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.cs-counts li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cs-counts b,
+.cs-chips b {
+  font-variant-numeric: tabular-nums;
+}
+
+.cs-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.cs-chips {
+  gap: 8px;
+}
+
+/* Calidad: siempre la familia naranja, nunca los colores de suministro */
+.cs-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: var(--c-q-bg);
+  color: var(--c-q-text);
+  font-weight: 500;
+}
+
+.cs-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--c-muted);
+}
+
+.cs-disclaimer {
+  margin-top: -6px;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .colonia-sheet {
+    left: 16px;
+    right: auto;
+    top: calc(64px + env(safe-area-inset-top));
+    bottom: auto;
+    width: 400px;
+    max-height: calc(100dvh - 80px);
+    padding-top: 16px;
+    border-radius: var(--r-sheet);
+    box-shadow: 0 8px 32px rgba(16, 35, 47, 0.18);
+  }
+
+  .colonia-sheet-handle {
+    display: none;
+  }
+}
+
+/* ─── Animación (solo si el usuario no pidió menos movimiento) ─── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet:not([hidden]) {
+    animation: sheet-in 0.22s ease-out;
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+}
+
+/* ─── Responsivo ─── */
+
+@media (max-width: 359px) {
+  .sheet-body,
+  .sheet-footer {
+    padding-inline: 16px;
+  }
+
+  .status-option {
+    font-size: 13px;
+  }
+}
+
+/* Teléfono horizontal: todo el alto y tarjetas más bajas, para que "Enviar" se vea */
+@media (max-height: 559px) and (orientation: landscape) {
+  .sheet {
+    inset: 0;
+    border-radius: 0;
+  }
+
+  .status-option {
+    min-height: 64px;
+    flex-direction: row;
+  }
+
+  .sheet-step--done {
+    padding-top: 16px;
+  }
+}
+
+/* Tablet y escritorio: panel lateral, el mapa queda visible */
+@media (min-width: 768px) {
+  .sheet-backdrop {
+    display: none;
+  }
+
+  body.sheet-open {
+    overflow: visible;
+  }
+
+  .sheet {
+    inset: 16px auto auto 16px;
+    width: 400px;
+    max-height: calc(100dvh - 32px);
+    border-radius: var(--r-sheet);
+    box-shadow: 0 8px 32px rgba(16, 35, 47, 0.18);
+  }
+
+  .sheet-step--done {
+    padding-top: 24px;
+  }
 }

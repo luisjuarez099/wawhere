@@ -7,7 +7,7 @@ import { GeolocateControl, Map as MapLibreMap, Marker, NavigationControl, setWor
 // MapLibre v6 busca su worker junto a su propio .mjs; con Vite (pre-bundle y build)
 // ese archivo no existe, así que Vite empaqueta el worker y le pasamos su URL.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
-import { ApiError, connectRealtime, createReport, fetchResumen } from './api'
+import { connectRealtime, fetchResumen } from './api'
 import {
   COLONIA_HIT_LAYER,
   COLONIA_LAYERS,
@@ -21,9 +21,11 @@ import { BASEMAPS, DEFAULT_BASEMAP, addBasemaps } from './basemaps'
 import { MAP_MAX_BOUNDS, MAP_MIN_ZOOM, MAP_STYLE_URL, ZMG_CENTER, ZMG_ZOOM } from './config'
 import { LocationError, getPosition, isInsideZmg } from './geolocation'
 import { LayerControls } from './layer-controls'
-import { RESUMEN_LAYERS, addResumenLayer, hideColoniaPopup, setLayersVisible, showColoniaPopup } from './reports-layer'
+import { CLUSTER_LAYER, HEAT_LAYERS, RESUMEN_LAYERS, addResumenLayer, setLayersVisible } from './reports-layer'
 import { ResumenStore } from './resumen-store'
-import type { Colonia, ReportStatus } from './types'
+import type { Colonia } from './types'
+import { errorMessage, initReportSheet } from './report-sheet'
+import { initColoniaSheet } from './colonia-sheet'
 import { ClimaControl } from './climaLayer'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
@@ -34,9 +36,11 @@ const REPORT_COOLDOWN_MS = 60_000
 const RESUMEN_REFRESH_MS = 120_000
 
 const statusEl = document.querySelector<HTMLElement>('#map-status')!
-const panel = document.querySelector<HTMLElement>('#report-panel')!
-const reportButtons = panel.querySelectorAll<HTMLButtonElement>('[data-status]')
-const reportMsg = document.querySelector<HTMLElement>('#report-msg')!
+const launcher = document.querySelector<HTMLElement>('#report-launcher')!
+const coloniaSheetEl = document.querySelector<HTMLElement>('#colonia-sheet')!
+const phone = window.matchMedia('(max-width: 767px)')
+const reportOpen = document.querySelector<HTMLButtonElement>('#report-open')!
+const reportMsg = document.querySelector<HTMLElement>('#launcher-msg')!
 const reportTarget = document.querySelector<HTMLElement>('#report-target')!
 
 const setStatus = (text: string) => {
@@ -130,6 +134,11 @@ map.addControl(
       }
     })
     .overlay({
+      label: 'Mapa de calor',
+      initial: true,
+      onChange: (on) => setLayersVisible(map, HEAT_LAYERS, on),
+    })
+    .overlay({
       label: 'Número de reportes',
       initial: true,
       onChange: (on) => setLayersVisible(map, RESUMEN_LAYERS, on),
@@ -149,10 +158,17 @@ map.addControl(
 map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
 map.addControl(geolocate, 'top-right')
 
-// Los controles de abajo (atribución) quedan por encima del panel de reportes
-new ResizeObserver(() => {
-  document.documentElement.style.setProperty('--panel-h', `${panel.offsetHeight}px`)
-}).observe(panel)
+// Los controles de abajo (atribución) quedan por encima de lo que esté abajo:
+// el panel fijo o, en el teléfono, la hoja de colonia. La hoja de reporte no
+// cuenta: es modal en el teléfono y lateral en escritorio.
+function measureBottom(): void {
+  const colonia = phone.matches && !coloniaSheetEl.hidden ? coloniaSheetEl.offsetHeight : 0
+  document.documentElement.style.setProperty('--panel-h', `${Math.max(launcher.offsetHeight, colonia)}px`)
+}
+const bottomObserver = new ResizeObserver(measureBottom)
+bottomObserver.observe(launcher)
+bottomObserver.observe(coloniaSheetEl)
+phone.addEventListener('change', measureBottom)
 
 // ─── Colonia elegida a mano ───
 
@@ -162,6 +178,7 @@ let selected: Colonia | null = null
 function selectColonia(colonia: Colonia | null): void {
   selected = colonia
   setSelectedColonia(map, colonia?.id ?? null)
+  reportOpen.textContent = colonia ? `Reportar en ${colonia.nombre}` : 'Reportar aquí'
 
   if (!colonia) {
     reportTarget.hidden = true
@@ -170,25 +187,45 @@ function selectColonia(colonia: Colonia | null): void {
   }
 
   const label = document.createElement('span')
-  label.textContent = `Vas a reportar en ${colonia.nombre}.`
+  label.textContent = 'Elegiste una colonia en el mapa.'
   const reset = document.createElement('button')
   reset.type = 'button'
   reset.className = 'report-target-reset'
   reset.textContent = 'Usar mi ubicación'
-  reset.addEventListener('click', () => selectColonia(null))
+  reset.addEventListener('click', clearColonia)
   reportTarget.replaceChildren(label, ' ', reset)
   reportTarget.hidden = false
 }
 
+/** Elige la colonia y abre su hoja con sus conteos. */
+function chooseColonia(colonia: Colonia): void {
+  selectColonia(colonia)
+  void coloniaSheet.open(colonia, store.get(colonia.id)?.properties)
+}
+
+function clearColonia(): void {
+  selectColonia(null)
+  coloniaSheet.close()
+}
+
 // ─── Reportar ───
 
+let coolingDown = false
+let mapReady = false
+
 function setReportEnabled(enabled: boolean): void {
-  reportButtons.forEach((b) => (b.disabled = !enabled))
+  reportOpen.disabled = !enabled || coolingDown || !mapReady
+  coloniaSheet.setReportEnabled(!coolingDown)
+}
+
+function setLauncherMsg(text: string, kind?: 'ok' | 'error'): void {
+  reportMsg.textContent = text
+  reportMsg.className = kind ? `report-msg report-msg--${kind}` : 'report-msg'
 }
 
 /** Colonia del usuario según su GPS. La ubicación se usa aquí y no se envía. */
 async function coloniaFromGps(): Promise<Colonia | null> {
-  reportMsg.textContent = 'Obteniendo tu ubicación…'
+  setLauncherMsg('Obteniendo tu ubicación…')
   const { coords } = await getPosition()
   const { longitude, latitude } = coords
 
@@ -197,58 +234,71 @@ async function coloniaFromGps(): Promise<Colonia | null> {
   }
 
   showUser(longitude, latitude)
-  reportMsg.textContent = 'Buscando tu colonia…'
+  setLauncherMsg('Buscando tu colonia…')
   // Los tiles de colonias tienen que estar en pantalla para consultarlos
   map.jumpTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 15) })
   await waitIdle()
   return coloniaAt(map, [longitude, latitude])
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof LocationError) return err.message
-  if (err instanceof ApiError && err.status === 422) {
-    return 'Esa colonia está fuera de la zona metropolitana de Guadalajara.'
-  }
-  if (err instanceof ApiError && err.status === 429) {
-    return 'Enviaste varios reportes seguidos. Intenta de nuevo en unos minutos.'
-  }
-  return 'No se pudo enviar tu reporte. Intenta de nuevo.'
-}
-
-async function report(status: ReportStatus): Promise<void> {
-  setReportEnabled(false)
-  reportMsg.className = 'report-msg'
-  try {
-    const colonia = selected ?? (await coloniaFromGps())
-
-    if (!colonia) {
-      reportMsg.textContent = 'No encontramos tu colonia. Tócala en el mapa y vuelve a elegir cómo está el agua.'
-      reportMsg.classList.add('report-msg--error')
-      setReportEnabled(true)
-      return
-    }
-
-    reportMsg.textContent = 'Enviando…'
-    await createReport({ colonia_id: colonia.id, status })
-
+const sheet = initReportSheet({
+  onSent: (_report, colonia) => {
     // El WebSocket también manda el conteo nuevo; esto cubre el caso de que esté desconectado
     void loadResumen()
-    selectColonia(null)
+    if (coloniaSheet.current?.id === colonia.id) {
+      // La hoja de colonia sigue abierta debajo: se actualiza con el reporte nuevo
+      void coloniaSheet.open(colonia, store.get(colonia.id)?.properties)
+    } else {
+      selectColonia(null)
+    }
+    setLauncherMsg('Gracias. ¿No era tu colonia? Tócala en el mapa y reporta de nuevo en un minuto.', 'ok')
+    coolingDown = true
+    setReportEnabled(false)
+    window.setTimeout(() => {
+      coolingDown = false
+      setReportEnabled(true)
+    }, REPORT_COOLDOWN_MS)
+  },
+  onChangeColonia: () => {
+    clearColonia()
+    setLauncherMsg('Toca tu colonia en el mapa para reportar ahí.')
+    map.getCanvas().focus()
+  },
+})
 
-    reportMsg.textContent = `Gracias. Tu reporte ya cuenta en ${colonia.nombre}. ¿No es tu colonia? Tócala en el mapa y reporta de nuevo en un minuto.`
-    reportMsg.classList.add('report-msg--ok')
-    window.setTimeout(() => setReportEnabled(true), REPORT_COOLDOWN_MS)
+const coloniaSheet = initColoniaSheet({
+  onReport: (colonia, trigger) => {
+    setLauncherMsg('')
+    sheet.open(colonia, 'map', trigger)
+  },
+  onClose: () => {
+    selectColonia(null)
+    reportOpen.focus()
+  },
+})
+
+reportOpen.addEventListener('click', async () => {
+  if (selected) {
+    setLauncherMsg('')
+    sheet.open(selected, 'map', reportOpen)
+    return
+  }
+  setReportEnabled(false)
+  try {
+    const colonia = await coloniaFromGps()
+    if (!colonia) {
+      setLauncherMsg('No encontramos tu colonia. Tócala en el mapa para reportar ahí.', 'error')
+      return
+    }
+    setLauncherMsg('')
+    sheet.open(colonia, 'gps', reportOpen)
   } catch (err) {
     console.error(err)
-    reportMsg.textContent = errorMessage(err)
-    reportMsg.classList.add('report-msg--error')
+    setLauncherMsg(errorMessage(err), 'error')
+  } finally {
     setReportEnabled(true)
   }
-}
-
-reportButtons.forEach((btn) =>
-  btn.addEventListener('click', () => report(btn.dataset.status as ReportStatus)),
-)
+})
 
 // ─── Datos ───
 
@@ -277,24 +327,22 @@ map.on('load', () => {
   render = addResumenLayer(map)
   // Lluvia satelital: encima del mapa base y colonias, debajo de los conteos
   // Clima: encima de colonias y mapa base, debajo de los conteos de reportes
-  map.addControl(new ClimaControl({ beforeId: RESUMEN_LAYERS[0] }), 'bottom-left')
+  map.addControl(new ClimaControl({ beforeId: HEAT_LAYERS[0] }), 'bottom-left')
 
+  mapReady = true
   setReportEnabled(true)
   void loadResumen()
 
-  // Tocar una colonia muestra sus conteos y la deja elegida para reportar;
-  // tocarla otra vez la deselecciona y cierra el popup
+  // Tocar una colonia abre su hoja y la deja elegida para reportar;
+  // tocarla otra vez la deselecciona y cierra la hoja
   map.on('click', (e) => {
+    // Tocar un grupo acerca el mapa (reports-layer.ts); no elige la colonia de abajo
+    if (map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER] }).length) return
     const feature = map.queryRenderedFeatures(e.point, { layers: [COLONIA_HIT_LAYER] })[0]
     const colonia = feature ? toColonia(feature) : null
     if (!colonia) return
-    if (colonia.id === selected?.id) {
-      selectColonia(null)
-      hideColoniaPopup()
-      return
-    }
-    selectColonia(colonia)
-    showColoniaPopup(map, e.lngLat, colonia, store.get(colonia.id)?.properties)
+    if (colonia.id === selected?.id) clearColonia()
+    else chooseColonia(colonia)
   })
 
   // Tiempo real: cuando alguien reporta, llega el conteo nuevo de su colonia
