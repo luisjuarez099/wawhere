@@ -2,8 +2,8 @@ import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl'
 import { ROTACION_ZONAS_URL } from './api'
 import { ZONA_COLORS } from './config'
 
-// Zonas del esquema rotatorio del SIAPA. Empiezan apagadas: se prenden desde el
-// panel de racionamiento o desde el botón de capas.
+// Zonas del esquema rotatorio del SIAPA. Las capas se crean ocultas y main.ts las
+// prende al cargar (ZONAS_AL_INICIO); se apagan desde el panel o el botón de capas.
 
 const SOURCE = 'rotacion-zonas'
 

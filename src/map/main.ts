@@ -135,7 +135,9 @@ geolocate.on('error', (err) => {
 // racionamiento se mantienen iguales (ver showZonas). Se declaran antes del control
 // porque overlay() llama a sync de inmediato
 let setZonasCheckbox: ((on: boolean) => void) | null = null
-let zonasVisibles = false
+// Las zonas se ven desde el inicio
+const ZONAS_AL_INICIO = true
+let zonasVisibles = ZONAS_AL_INICIO
 
 map.addControl(
   new LayerControls()
@@ -160,7 +162,7 @@ map.addControl(
     })
     .overlay({
       label: 'Zonas de racionamiento',
-      initial: false,
+      initial: ZONAS_AL_INICIO,
       onChange: (on) => {
         showZonas(on)
         rotacion.setMapa(on)
@@ -324,6 +326,11 @@ const rotacion = initRotacionPanel({
   onData: marcarZonasHoy,
   onOpen: () => search.close(false),
 })
+
+// El interruptor del panel arranca igual que la capa, y el calendario se pide ya
+// para marcar las zonas que tienen racionamiento hoy
+rotacion.setMapa(zonasVisibles)
+if (zonasVisibles) void rotacion.load()
 
 // ─── Buscar colonia ───
 
