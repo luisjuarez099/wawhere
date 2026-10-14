@@ -65,6 +65,7 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 | **Municipios**            | Límites y nombres de los 125 municipios de Jalisco                                                       | [INEGI](https://www.inegi.org.mx/temas/mg/), Marco Geoestadístico 2023 (vía [mexico-geojson](https://github.com/PhantomInsights/mexico-geojson))                              | Archivo estático `public/municipios.geojson` (~700 KB, ~210 KB con gzip). Polígonos simplificados (~30 m en la ZMG, ~100 m en el resto) y un punto interior por municipio para su nombre                       |
 | **Mapas base opcionales** | OpenStreetMap estándar e imágenes satelitales                                                            | [OpenStreetMap](https://www.openstreetmap.org/copyright) y [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9)                    | Tiles raster que se eligen en el botón de capas; solo se descargan cuando están activos                                                                                                                        |
 | **Conteo por colonia** 🔢 | Círculo con el número de reportes vigentes, del color del estado más reportado (en empate, el más grave) | Reportes de los vecinos                                                                                                                                                       | `GET /api/reports/resumen` y actualizaciones por WebSocket                                                                                                                                                     |
+| **Zonas de racionamiento** 📅 | Las 7 zonas del esquema rotatorio del SIAPA; las que tienen racionamiento hoy se ven más marcadas. Apagada al inicio | [SIAPA](https://rotaciondeserviciosiapa.jalisco.gob.mx/), mapa de zonas (Google My Maps, KML) y calendario semanal | `scripts/load_rotacion.py` (repo `wawhere-api`) carga el KML en PostGIS; la API lo sirve en `GET /api/rotacion/zonas.geojson`. El calendario va en `app/data/rotacion.json` |
 | **Colonias coloreadas**   | La colonia completa se pinta del color de su estado                                                      | Reportes de los vecinos, sobre la capa de colonias                                                                                                                            | `feature-state` de MapLibre sobre los tiles de colonias                                                                                                                                                        |
 
 El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_PointOnSurface`). Es un punto fijo de la colonia, no la ubicación de quien reportó.
@@ -99,6 +100,8 @@ El círculo de cada colonia se dibuja en un punto interior de su polígono (`ST_
 | `GET /api/colonias/{id}`                  | Hoja de colonia (`getColoniaDetalle`)  | Conteos de los reportes activos de una colonia (por estado, por calidad, fecha del último reporte) y la primera página de comentarios (10, con `comentarios_total` y `comentarios_hay_mas`). Si falla, la hoja usa los conteos de `/resumen` |
 | `GET /api/colonias/{id}/comentarios`      | "Ver más comentarios" (`getColoniaComentarios`) | Siguiente página (20) de comentarios más viejos que `antes` (el `created_at` del último mostrado). Responde `{ comentarios, hay_mas }` |
 | `GET /api/colonias?q=`                    | Buscador (`searchColonias`)            | Hasta 8 colonias cuyo nombre contiene `q` (sin importar acentos), con su `bbox`. `lng`/`lat` es el centro del mapa visible, para ordenar las homónimas por cercanía |
+| `GET /api/rotacion`                       | Panel de racionamiento (`fetchRotacion`) | Calendario del esquema rotatorio del SIAPA: días por zona, si hoy le toca, fuente, fecha y contacto |
+| `GET /api/rotacion/zonas.geojson`         | Capa *Zonas de racionamiento*          | Polígonos de las 7 zonas                                                                                                                          |
 | `WS /api/reports/ws`                      | `connectRealtime`                      | Envía `{ type: 'colonia_update', feature }` con el conteo nuevo de una colonia cada vez que alguien reporta                                       |
 | `GET /api/tiles/colonias/{z}/{x}/{y}.pbf` | Fuente vectorial de MapLibre           | Polígonos de colonias en MVT, zoom 9–16, con caché de 1 día                                                                                       |
 | `GET /api/reports/stats`                  | Resumen de reportes (`fetchStats`)     | Totales vigentes: `total`, `sin_agua`, `baja_presion`, `con_agua`, `fugas`, y `historico` (reportes de suministro desde el inicio). El mapa solo usa `historico` |
@@ -166,6 +169,8 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   │   ├── colonia-sheet.ts     # Hoja informativa al tocar una colonia (conteos y comentarios)
 │   │   ├── colonia-search.ts    # Buscador de colonias (lupa que despliega la barra)
 │   │   ├── stats-panel.ts       # Resumen de reportes para el ciudadano (24 h e histórico)
+│   │   ├── rotacion-panel.ts    # Botón de calendario: racionamiento programado del SIAPA
+│   │   ├── rotacion-layer.ts    # Zonas del esquema rotatorio en el mapa
 │   │   ├── config.ts            # URLs, límites de la ZMG/Jalisco, colores, etiquetas de estado y calidad
 │   │   ├── types.ts             # Tipos espejo de los schemas de aguajalisco-api
 │   │   ├── api.ts               # GET /resumen, GET /colonias (búsqueda y detalle), POST /reports y WebSocket
@@ -185,6 +190,7 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 ## Interfaz del mapa
 
 - **Hoja de colonia:** al tocar una colonia. Muestra nombre, municipio y CP, el estado dominante ("Mayoría sin agua"), la fecha del último reporte en hora de Guadalajara ("Hoy a las 11:16 a.m."), una barra con los conteos por estado y los problemas de calidad reportados. En el teléfono es una hoja inferior; en tablet y escritorio, un panel a la izquierda.
+- **Racionamiento programado (SIAPA):** el botón de calendario junto a la lupa abre un panel con las zonas que tienen racionamiento hoy ("Hoy martes: baja presión en Zona 2 y Zona 5"), el calendario semanal con el día de hoy resaltado, un interruptor para ver las zonas en el mapa, los contactos del SIAPA (WhatsApp y 073) y la fuente con su fecha. La hoja de cada colonia muestra su zona (o zonas, con el porcentaje de la colonia en cada una), los días y "Hoy le toca" o "Próximo: el viernes". Se aclara que no son cortes totales y que la zona es aproximada. Detalles: `wawhere-api/docs/rotacion-siapa.md`.
 - **Resumen de reportes:** arriba del panel de abajo, una línea con un punto "en vivo": "8 reportes en las últimas 24 h · 4 colonias". *Resumen* despliega la barra y los conteos por estado con porcentaje, colonias con reportes, colonias mayormente sin agua, reportes desde el inicio y la hora de la última actualización. Las cifras de 24 h se calculan con el mismo resumen del mapa, así que cambian con cada reporte en vivo. Por ahora no cuenta las fugas.
 - **Buscador de colonias:** la lupa junto al logo despliega una barra de búsqueda; se cierra con la misma lupa, con ✕, con `Esc` o tocando el mapa. Se navega con flechas y Enter. Al elegir una colonia se abre su hoja y el mapa la acerca sin que la tape la hoja. En el teléfono el logo se oculta mientras la barra está abierta.
 - **Fugas de agua:** cuarto estado del reporte, en cian. Cada fuga cuenta como un reporte más de la colonia: suma en su círculo y en los grupos, y si es el estado más reportado, el círculo y la colonia se pintan de cian. En empate entre estados gana el más grave: sin agua, fuga, baja presión, con agua.
@@ -238,6 +244,13 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 - **Resumen de reportes** en el panel de abajo (24 h, desglose, colonias e histórico), sin contar fugas por ahora.
 - **Requiere** correr en la base `scripts/migrations/2026-10-12-status-fuga.sql` de `wawhere-api` antes de desplegar; sin eso la API responde `500` al guardar una fuga.
 
+### Racionamiento programado del SIAPA
+
+- **Datos:** zonas del mapa oficial del SIAPA (KML) cruzadas con las colonias, y calendario copiado de su página. Proceso, verificación y cómo actualizar en `wawhere-api/docs/rotacion-siapa.md`.
+- **Hoja de colonia:** bloque "Racionamiento programado · SIAPA".
+- **Botón de calendario** con el panel semanal y la capa *Zonas de racionamiento* (también en el botón de capas).
+- **Requiere** correr `scripts/load_rotacion.py` en la base de producción; sin eso, el calendario se ve pero las colonias no muestran zona y la capa sale vacía.
+
 ## Deploy
 
 Docker en Easypanel: el `Dockerfile` construye con Node 22 y sirve `dist/` con nginx. Las variables `VITE_*` se pasan como build args. nginx no hace proxy de `/api`; en producción la API se sirve en el mismo dominio (`aguajalisco.com.mx/api`) desde Easypanel.
@@ -248,6 +261,7 @@ Docker en Easypanel: el `Dockerfile` construye con Node 22 y sirve `dist/` con n
 - Colonias: Instituto de Información Estadística y Geográfica de Jalisco (IIEG).
 - Municipios: Instituto Nacional de Estadística y Geografía ([INEGI](https://www.inegi.org.mx/temas/mg/)), Marco Geoestadístico 2023.
 - Mapa satelital: imágenes © Esri, Maxar, Earthstar Geographics.
+- Racionamiento programado: SIAPA y Gobierno de Jalisco, [esquema rotatorio de Agua Limpia para Jalisco](https://rotaciondeserviciosiapa.jalisco.gob.mx/). Calendario y zonas aproximadas; la referencia es la página oficial.
 - Mapa: [MapLibre GL JS](https://maplibre.org) (licencia BSD-3-Clause).
 
 ---

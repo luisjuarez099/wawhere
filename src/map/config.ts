@@ -40,6 +40,28 @@ export const STATUS_LABELS: Record<ReportStatus, string> = {
   fuga: 'Fuga de agua',
 }
 
+// Zonas del esquema rotatorio: paleta propia (no la del SIAPA) que no se confunde
+// con los colores de estado (verde, amarillo, rojo, cian) ni con el mapa de calor
+export const ZONA_COLORS: Record<number, string> = {
+  1: '#3f6e8c',
+  2: '#a1572f',
+  3: '#5b5fc7',
+  4: '#8c6d31',
+  5: '#c2448a',
+  6: '#5f6b73',
+  7: '#7a4fa3',
+}
+
+// 1 = lunes ... 7 = domingo (como isoweekday en la API)
+export const DIAS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+export const DIAS_CORTOS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+
+/** "martes, jueves y domingo" */
+export function listaDias(dias: number[]): string {
+  const nombres = dias.map((d) => DIAS[d - 1])
+  return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}` : (nombres[0] ?? '')
+}
+
 // Orden en que se muestran los chips de calidad
 export const QUALITY_ORDER: ReportQuality[] = ['mal_olor', 'turbia', 'sedimentos', 'otro']
 

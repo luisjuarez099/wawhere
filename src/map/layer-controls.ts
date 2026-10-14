@@ -9,6 +9,9 @@ interface OverlayOptions {
   label: string
   initial: boolean
   onChange: (on: boolean) => void
+  // Recibe una función para marcar/desmarcar la casilla desde fuera (sin llamar a onChange),
+  // para cuando otro control prende la misma capa
+  sync?: (setChecked: (on: boolean) => void) => void
 }
 
 // Icono de capas apiladas, del mismo tamaño y trazo que los íconos de MapLibre
@@ -68,11 +71,12 @@ export class LayerControls implements IControl {
     return this
   }
 
-  overlay({ label, initial, onChange }: OverlayOptions): this {
+  overlay({ label, initial, onChange, sync }: OverlayOptions): this {
     this.overlayList.hidden = false
     const input = this.row(this.overlayList, 'checkbox', label)
     input.checked = initial
     input.addEventListener('change', () => onChange(input.checked))
+    sync?.((on) => (input.checked = on))
     return this
   }
 

@@ -28,6 +28,8 @@ import { errorMessage, initReportSheet } from './report-sheet'
 import { initColoniaSheet } from './colonia-sheet'
 import { initColoniaSearch } from './colonia-search'
 import { initStatsPanel } from './stats-panel'
+import { ROTACION_LAYERS, addRotacionLayers, setZonasHoy } from './rotacion-layer'
+import { initRotacionPanel } from './rotacion-panel'
 import { ClimaControl } from './climaLayer'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
@@ -129,6 +131,12 @@ geolocate.on('error', (err) => {
   )
 })
 
+// Zonas del SIAPA: la casilla del botón de capas y el interruptor del panel de
+// racionamiento se mantienen iguales (ver showZonas). Se declaran antes del control
+// porque overlay() llama a sync de inmediato
+let setZonasCheckbox: ((on: boolean) => void) | null = null
+let zonasVisibles = false
+
 map.addControl(
   new LayerControls()
     .basemaps(BASEMAPS, basemap, (id) => {
@@ -149,6 +157,15 @@ map.addControl(
       label: 'Número de reportes',
       initial: true,
       onChange: (on) => setLayersVisible(map, RESUMEN_LAYERS, on),
+    })
+    .overlay({
+      label: 'Zonas de racionamiento',
+      initial: false,
+      onChange: (on) => {
+        showZonas(on)
+        rotacion.setMapa(on)
+      },
+      sync: (setChecked) => (setZonasCheckbox = setChecked),
     })
     .overlay({
       label: 'Colonias',
@@ -282,11 +299,36 @@ const coloniaSheet = initColoniaSheet({
     selectColonia(null)
     reportOpen.focus()
   },
+  onRotacion: () => rotacion.open(),
+})
+
+// ─── Racionamiento programado (SIAPA) ───
+
+/** Prende/apaga las zonas; si el mapa aún no carga, se aplica en el load. */
+function showZonas(on: boolean): void {
+  zonasVisibles = on
+  if (mapReady) setLayersVisible(map, ROTACION_LAYERS, on)
+  if (on) void rotacion.load() // "hoy" necesita el calendario
+}
+
+function marcarZonasHoy(): void {
+  const data = rotacion.data
+  if (mapReady && data) setZonasHoy(map, data.zonas.filter((z) => z.hoy).map((z) => z.zona))
+}
+
+const rotacion = initRotacionPanel({
+  onMapaChange: (on) => {
+    showZonas(on)
+    setZonasCheckbox?.(on)
+  },
+  onData: marcarZonasHoy,
+  onOpen: () => search.close(false),
 })
 
 // ─── Buscar colonia ───
 
-initColoniaSearch({
+const search = initColoniaSearch({
+  onOpen: () => rotacion.close(false),
   getCenter: () => map.getCenter().toArray() as [number, number],
   onSelect: ({ id, nombre, municipio, cp, bbox }) => {
     chooseColonia({ id, nombre, municipio, cp: cp ?? '' })
@@ -369,12 +411,16 @@ map.on('load', () => {
   // Primero colonias y límite estatal para que queden debajo del resumen
   addBoundaryLayers(map)
   render = addResumenLayer(map)
+  // Zonas del SIAPA: encima de colonias, debajo del mapa de calor y los conteos
+  addRotacionLayers(map, HEAT_LAYERS[0])
   // Lluvia satelital: encima del mapa base y colonias, debajo de los conteos
   // Clima: encima de colonias y mapa base, debajo de los conteos de reportes
   map.addControl(new ClimaControl({ beforeId: HEAT_LAYERS[0] }), 'bottom-left')
 
   mapReady = true
   setReportEnabled(true)
+  if (zonasVisibles) setLayersVisible(map, ROTACION_LAYERS, true)
+  marcarZonasHoy()
   void loadResumen()
 
   // Tocar una colonia abre su hoja y la deja elegida para reportar;

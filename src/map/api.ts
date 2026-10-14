@@ -1,5 +1,5 @@
 import { API_URL } from './config'
-import type { ColoniaBusqueda, ColoniaComentarios, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection, StatsResponse } from './types'
+import type { ColoniaBusqueda, ColoniaComentarios, ColoniaDetalle, ColoniaResumen, RealtimeMessage, Report, ReportCreate, ResumenCollection, Rotacion, StatsResponse } from './types'
 
 /** Error HTTP con el status y el detail, para mostrar un mensaje distinto según el caso (422, 429…). */
 export class ApiError extends Error {
@@ -21,6 +21,16 @@ export async function fetchStats(signal?: AbortSignal): Promise<StatsResponse> {
   if (!res.ok) throw new ApiError(res.status, `GET /api/reports/stats → ${res.status}`)
   return res.json()
 }
+
+/** Calendario del esquema rotatorio del SIAPA, con el día de hoy. */
+export async function fetchRotacion(signal?: AbortSignal): Promise<Rotacion> {
+  const res = await fetch(`${API_URL}/api/rotacion`, { signal })
+  if (!res.ok) throw new ApiError(res.status, `GET /api/rotacion → ${res.status}`)
+  return res.json()
+}
+
+/** Polígonos de las zonas; MapLibre los pide directo como fuente GeoJSON. */
+export const ROTACION_ZONAS_URL = `${API_URL}/api/rotacion/zonas.geojson`
 
 /** Detalle de una colonia: suministro, calidad y último reporte (solo reportes activos). */
 export async function getColoniaDetalle(id: number, signal?: AbortSignal): Promise<ColoniaDetalle> {

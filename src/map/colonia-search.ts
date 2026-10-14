@@ -11,9 +11,11 @@ interface ColoniaSearchOptions {
   // Centro del mapa visible, para que entre homónimos salga primero la más cercana
   getCenter: () => [number, number]
   onSelect: (colonia: ColoniaBusqueda) => void
+  // Se abrió la barra (para cerrar el panel de racionamiento)
+  onOpen?: () => void
 }
 
-export function initColoniaSearch({ getCenter, onSelect }: ColoniaSearchOptions) {
+export function initColoniaSearch({ getCenter, onSelect, onOpen }: ColoniaSearchOptions) {
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!
   const root = $('#map-search')
   const toggle = $<HTMLButtonElement>('#search-toggle')
@@ -31,6 +33,7 @@ export function initColoniaSearch({ getCenter, onSelect }: ColoniaSearchOptions)
   // ─── Abrir y cerrar ───
 
   function open(): void {
+    onOpen?.()
     root.classList.add('is-open')
     document.body.classList.add('search-open')
     box.hidden = false
@@ -41,6 +44,7 @@ export function initColoniaSearch({ getCenter, onSelect }: ColoniaSearchOptions)
   }
 
   function close(returnFocus = true): void {
+    if (box.hidden) return
     root.classList.remove('is-open')
     document.body.classList.remove('search-open')
     box.hidden = true

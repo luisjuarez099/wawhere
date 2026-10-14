@@ -88,6 +88,46 @@
           <p class="map-search-msg" id="search-msg" role="status" hidden></p>
         </div>
       </div>
+      <div class="map-rotacion" id="map-rotacion">
+        <button
+          type="button"
+          class="map-search-toggle"
+          id="rotacion-toggle"
+          aria-expanded="false"
+          aria-controls="rotacion-panel"
+          aria-label="Racionamiento programado del SIAPA"
+          title="Racionamiento programado"
+        >
+          <img src="/icons/calendario.svg" alt="" width="22" height="22" />
+        </button>
+        <section class="rotacion-panel" id="rotacion-panel" aria-labelledby="rotacion-title" hidden>
+          <header class="rotacion-header">
+            <h2 class="rotacion-title" id="rotacion-title" tabindex="-1">Racionamiento programado</h2>
+            <button type="button" class="map-search-close" id="rotacion-close" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+              </svg>
+            </button>
+          </header>
+          <p class="rotacion-hoy" id="rotacion-hoy">Cargando calendario…</p>
+          <p class="rotacion-nota" id="rotacion-nota"></p>
+          <div class="rotacion-tabla-wrap">
+            <table class="rotacion-tabla" id="rotacion-tabla">
+              <caption class="sr-only">Días con racionamiento de cada zona</caption>
+            </table>
+          </div>
+          <label class="rotacion-switch">
+            <input type="checkbox" id="rotacion-mapa" />
+            <span>Ver zonas en el mapa</span>
+          </label>
+          <div class="rotacion-contacto">
+            <a id="rotacion-whatsapp" href="https://wa.me/523351644440" target="_blank" rel="noopener">WhatsApp SIAPABOT</a>
+            <a id="rotacion-telefono" href="tel:073">SIAPATEL 073</a>
+          </div>
+          <p class="rotacion-fuente" id="rotacion-fuente"></p>
+          <p class="form-msg" id="rotacion-msg" role="status"></p>
+        </section>
+      </div>
       <p class="map-status" id="map-status" role="status"></p>
     </header>
 
@@ -145,6 +185,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
         <span id="cs-ultimo"></span>
       </p>
+
+      <section class="cs-block cs-rotacion" id="cs-rotacion" aria-labelledby="cs-rotacion-label" hidden>
+        <h3 class="cs-label" id="cs-rotacion-label">Racionamiento programado · SIAPA</h3>
+        <ul class="cs-rotacion-zonas" id="cs-rotacion-zonas"></ul>
+        <p class="cs-rotacion-nota" id="cs-rotacion-nota"></p>
+        <button type="button" class="link-btn cs-rotacion-link" id="cs-rotacion-ver">Ver calendario de todas las zonas</button>
+      </section>
 
       <section class="cs-block" id="cs-supply" hidden>
         <h3 class="cs-label" id="cs-supply-label"></h3>

@@ -1,6 +1,6 @@
 import { getColoniaComentarios, getColoniaDetalle } from './api'
-import { QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS } from './config'
-import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, ReportStatus } from './types'
+import { DIAS, QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS, ZONA_COLORS, listaDias } from './config'
+import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, ReportStatus, RotacionColonia } from './types'
 
 // Hoja informativa al tocar una colonia (pantalla 1 del diseño): suministro,
 // calidad reportada y último reporte, con el botón para reportar ahí.
@@ -66,9 +66,11 @@ interface ColoniaSheetOptions {
   onReport: (colonia: Colonia, trigger: HTMLElement) => void
   // Se cerró con ✕ o Esc
   onClose: () => void
+  // "Ver calendario de todas las zonas"
+  onRotacion: () => void
 }
 
-export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
+export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheetOptions) {
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!
   const sheet = $('#colonia-sheet')
   const el = {
@@ -88,6 +90,10 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     comments: $('#cs-comments'),
     commentsList: $<HTMLUListElement>('#cs-comments-list'),
     commentsLabel: $('#cs-comments-label'),
+    rotacion: $('#cs-rotacion'),
+    rotacionZonas: $<HTMLUListElement>('#cs-rotacion-zonas'),
+    rotacionNota: $('#cs-rotacion-nota'),
+    rotacionVer: $<HTMLButtonElement>('#cs-rotacion-ver'),
     commentsMore: $<HTMLButtonElement>('#cs-comments-more'),
     commentsMsg: $('#cs-comments-msg'),
     report: $<HTMLButtonElement>('#cs-report'),
@@ -146,6 +152,51 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     return item
   }
 
+  /** "Hoy" · "Mañana, miércoles" · "El sábado" */
+  function proximo(dias: number[], hoy: number): string {
+    if (dias.includes(hoy)) return 'Hoy'
+    const siguiente = [...dias].sort((a, b) => ((a - hoy + 7) % 7) - ((b - hoy + 7) % 7))[0]
+    if (siguiente === undefined) return ''
+    return (siguiente - hoy + 7) % 7 === 1 ? `Mañana, ${DIAS[siguiente - 1]}` : `El ${DIAS[siguiente - 1]}`
+  }
+
+  function renderRotacion(r: RotacionColonia | null | undefined): void {
+    el.rotacion.hidden = !r?.zonas.length
+    if (!r?.zonas.length) return
+    const varias = r.zonas.length > 1
+    el.rotacionZonas.replaceChildren(
+      ...r.zonas.map((z) => {
+        const item = document.createElement('li')
+        item.className = z.hoy ? 'cs-zona is-hoy' : 'cs-zona'
+        item.style.setProperty('--zona', ZONA_COLORS[z.zona] ?? '#5f6b73')
+
+        const titulo = document.createElement('p')
+        titulo.className = 'cs-zona-titulo'
+        const swatch = document.createElement('span')
+        swatch.className = 'rotacion-swatch'
+        swatch.setAttribute('aria-hidden', 'true')
+        const nombre = document.createElement('b')
+        nombre.textContent = z.nombre
+        titulo.append(swatch, nombre)
+        if (varias) titulo.append(` · ${z.porcentaje}% de la colonia`)
+
+        const dias = document.createElement('p')
+        dias.className = 'cs-zona-dias'
+        dias.textContent = `Baja presión los ${listaDias(z.dias)}`
+
+        const prox = document.createElement('span')
+        prox.className = 'cs-zona-prox'
+        prox.textContent = z.hoy ? 'Hoy le toca' : `Próximo: ${proximo(z.dias, r.hoy).toLowerCase()}`
+
+        item.append(titulo, prox, dias)
+        return item
+      }),
+    )
+    el.rotacionNota.textContent =
+      (varias ? 'La colonia está repartida en varias zonas; la tuya depende de tu calle. ' : '') +
+      'Zona aproximada según el mapa del SIAPA. No es un corte total.'
+  }
+
   // DOM con textContent: nunca se arma HTML con datos
   function render(d: ColoniaDetalle): void {
     el.nombre.textContent = d.nombre || 'Colonia sin nombre'
@@ -187,6 +238,8 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     const conReportes = QUALITY_ORDER.filter((q) => d.quality[q] > 0).sort((a, b) => d.quality[b] - d.quality[a])
     el.quality.hidden = conReportes.length === 0
     el.chips.replaceChildren(...conReportes.map((q) => li(QUALITY_LABELS[q], d.quality[q])))
+
+    renderRotacion(d.rotacion)
 
     // Comentarios: todo el historial de la colonia, del más reciente al más viejo,
     // aunque ya no haya reportes activos. Llegan de 10 en 10; el resto con "Ver más"
@@ -272,6 +325,7 @@ export function initColoniaSheet({ onReport, onClose }: ColoniaSheetOptions) {
     onClose()
   })
   el.commentsMore.addEventListener('click', () => void loadMore())
+  el.rotacionVer.addEventListener('click', () => onRotacion())
   el.report.addEventListener('click', () => {
     if (colonia) onReport(colonia, el.report)
   })

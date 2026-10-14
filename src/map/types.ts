@@ -77,6 +77,36 @@ export interface StatsResponse {
   historico: number // reportes de suministro desde el inicio (sin fugas)
 }
 
+// Esquema rotatorio del SIAPA. Días: 1 = lunes ... 7 = domingo
+export interface ZonaRotacion {
+  zona: number
+  nombre: string
+  dias: number[]
+  hoy: boolean // hoy le toca racionamiento
+  sector: string | null
+  colonias: number | null
+}
+
+// GET /api/rotacion
+export interface Rotacion {
+  fuente: string
+  fuente_url: string
+  actualizado: string // AAAA-MM-DD
+  nota: string
+  contacto: { whatsapp: string; telefono: string }
+  hoy: number
+  zonas: ZonaRotacion[]
+}
+
+// Zonas de una colonia, dentro de GET /api/colonias/{id}
+export interface RotacionColonia {
+  zonas: (Pick<ZonaRotacion, 'zona' | 'nombre' | 'dias' | 'hoy'> & { porcentaje: number })[]
+  hoy: number
+  actualizado: string
+  fuente_url: string
+  nota: string
+}
+
 // Respuesta de GET /api/colonias/{id}: conteos de los reportes activos de una colonia
 export interface ColoniaDetalle {
   colonia_id: number
@@ -93,6 +123,7 @@ export interface ColoniaDetalle {
   comentarios?: ColoniaComentario[] // primera página, del más reciente al más viejo
   comentarios_total?: number
   comentarios_hay_mas?: boolean // el resto se pide con getColoniaComentarios
+  rotacion?: RotacionColonia | null // null si la colonia no está en el esquema rotatorio
 }
 
 // GET /api/colonias/{id}/comentarios: la siguiente página de comentarios
