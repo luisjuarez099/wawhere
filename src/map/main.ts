@@ -256,7 +256,7 @@ async function coloniaFromGps(): Promise<Colonia | null> {
   const { longitude, latitude } = coords
 
   if (!isInsideZmg(longitude, latitude)) {
-    throw new LocationError('Por ahora wawhere solo funciona en la zona metropolitana de Guadalajara.')
+    throw new LocationError('Por ahora AguaJalisco solo funciona en la zona metropolitana de Guadalajara.')
   }
 
   showUser(longitude, latitude)
