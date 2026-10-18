@@ -6,6 +6,10 @@ import type { ColoniaBusqueda } from './types'
 
 const MIN_CHARS = 2
 const DEBOUNCE_MS = 200
+// Igual que en la API: 3 a 5 dígitos son un código postal (o su inicio)
+const CP = /(^|\s)(\d{3,5})(\s|$)/
+// Un CP puede tener decenas de colonias; la lista tiene scroll
+const LIMITE_CP = 30
 
 interface ColoniaSearchOptions {
   // Centro del mapa visible, para que entre homónimos salga primero la más cercana
@@ -110,10 +114,15 @@ export function initColoniaSearch({ getCenter, onSelect, onOpen }: ColoniaSearch
   async function search(q: string): Promise<void> {
     ctrl?.abort()
     ctrl = new AbortController()
+    const cp = CP.exec(q)?.[2]
     try {
-      const items = await searchColonias(q, getCenter(), ctrl.signal)
+      const items = await searchColonias(q, getCenter(), ctrl.signal, cp ? LIMITE_CP : undefined)
       showResults(items)
-      setMsg(items.length ? '' : `No encontramos colonias con “${q}”.`)
+      setMsg(
+        items.length ? ''
+        : cp && q === cp ? `No encontramos colonias con el código postal ${cp}.`
+        : `No encontramos colonias con “${q}”.`,
+      )
     } catch (err) {
       if ((err as DOMException).name === 'AbortError') return
       console.error(err)

@@ -44,8 +44,9 @@ export async function searchColonias(
   q: string,
   cerca: [number, number],
   signal?: AbortSignal,
+  limit = 8,
 ): Promise<ColoniaBusqueda[]> {
-  const params = new URLSearchParams({ q, limit: '8', lng: cerca[0].toFixed(3), lat: cerca[1].toFixed(3) })
+  const params = new URLSearchParams({ q, limit: String(limit), lng: cerca[0].toFixed(3), lat: cerca[1].toFixed(3) })
   const res = await fetch(`${API_URL}/api/colonias?${params}`, { signal })
   if (!res.ok) throw new ApiError(res.status, `GET /api/colonias?q= → ${res.status}`)
   return res.json()

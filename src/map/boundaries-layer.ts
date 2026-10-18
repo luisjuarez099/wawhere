@@ -57,7 +57,8 @@ export function addBoundaryLayers(map: MapLibreMap): void {
 
   map.addSource(COLONIA_SOURCE, {
     type: 'vector',
-    tiles: [`${apiBase}/api/tiles/colonias/{z}/{x}/{y}.pbf`],
+    // ?v=: cambiarlo cuando los tiles traigan campos nuevos (se guardan un día en caché)
+    tiles: [`${apiBase}/api/tiles/colonias/{z}/{x}/{y}.pbf?v=2`],
     // Debe coincidir con MIN_ZOOM / MAX_ZOOM de wawhere-api/app/routes/tiles.py
     minzoom: 9,
     maxzoom: 16,
@@ -200,7 +201,6 @@ export function addBoundaryLayers(map: MapLibreMap): void {
 export function setSelectedColonia(map: MapLibreMap, id: number | null): void {
   map.setFilter(SELECTED_LAYER, ['==', ['id'], id ?? -1])
 }
-
 // Acepta features de queryRenderedFeatures y de querySourceFeatures: solo usa id y propiedades
 export function toColonia(feature: GeoJSONFeature): Colonia | null {
   if (feature.id == null) return null

@@ -33,6 +33,7 @@ import { initColoniaSearch } from './colonia-search'
 import { initStatsPanel } from './stats-panel'
 import { ROTACION_LAYERS, addRotacionLayers, setZonasHoy } from './rotacion-layer'
 import { initRotacionPanel } from './rotacion-panel'
+import { initColoniaHover } from './colonia-hover'
 import { ClimaControl } from './climaLayer'
 import { LegendControl } from './legend-control'
 
@@ -478,6 +479,8 @@ map.on('load', () => {
   setBasemap(basemap)
   // Primero colonias y límite estatal para que queden debajo del resumen
   addBoundaryLayers(map)
+  // Con mouse: nombre, CP y si la colonia está en las zonas de racionamiento
+  initColoniaHover(map, { getRotacion: () => rotacion.data })
   render = addResumenLayer(map)
   donuts = initDonutMarkers(map, { source: RESUMEN_SOURCE, onColonia: coloniaDesdeResumen })
   donuts.setVisible(conteosVisibles)

@@ -1829,3 +1829,54 @@ body.colonia-open .report-panel {
     padding-top: 24px;
   }
 }
+
+/* ─── Aviso al pasar el mouse por una colonia (colonia-hover.ts) ─── */
+
+.colonia-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  max-width: 260px;
+  padding: 8px 12px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(16 35 47 / 0.18);
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.colonia-tip[hidden] {
+  display: none;
+}
+
+.colonia-tip-nombre {
+  display: block;
+  font-size: 14px;
+}
+
+.colonia-tip-sub {
+  display: block;
+  color: var(--c-muted);
+}
+
+.colonia-tip-estado {
+  margin: 6px 0 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--c-border);
+  color: var(--c-muted);
+}
+
+.colonia-tip-estado.is-dentro {
+  color: var(--c-ink);
+  font-weight: 600;
+}
+
+.colonia-tip-zonas {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
