@@ -149,10 +149,9 @@ let setZonasCheckbox: ((on: boolean) => void) | null = null
 // Las zonas se ven desde el inicio
 const ZONAS_AL_INICIO = true
 let zonasVisibles = ZONAS_AL_INICIO
-// Menos capas al entrar: el mapa de calor repite los círculos y los municipios
-// distraen. Se prenden desde el botón de capas.
-const CALOR_AL_INICIO = false
-const MUNICIPIOS_AL_INICIO = false
+// Mapa de calor y municipios visibles al entrar; se apagan desde el botón de capas
+const CALOR_AL_INICIO = true
+const MUNICIPIOS_AL_INICIO = true
 // Clima oculto por ahora (no se carga ni se muestra); poner en true para regresarlo
 const CLIMA_VISIBLE = false
 

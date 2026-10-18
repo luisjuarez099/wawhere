@@ -178,8 +178,8 @@ export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheet
         swatch.setAttribute('aria-hidden', 'true')
         const nombre = document.createElement('b')
         nombre.textContent = z.nombre
+        // Sin porcentaje: el SIAPA asigna algunas zonas por red aunque el polígono no cubra la colonia
         titulo.append(swatch, nombre)
-        if (varias) titulo.append(` · ${z.porcentaje}% de la colonia`)
 
         const dias = document.createElement('p')
         dias.className = 'cs-zona-dias'
@@ -194,8 +194,9 @@ export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheet
       }),
     )
     el.rotacionNota.textContent =
-      (varias ? 'La colonia está repartida en varias zonas; la tuya depende de tu calle. ' : '') +
-      'Zona aproximada según el mapa del SIAPA. No es un corte total.'
+      (varias
+        ? 'La colonia se abastece de varios acueductos y está repartida en varias zonas; revisa todas. '
+        : '') + 'Zona según el SIAPA. No es un corte total.'
   }
 
   // DOM con textContent: nunca se arma HTML con datos

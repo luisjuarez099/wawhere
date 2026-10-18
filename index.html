@@ -128,7 +128,23 @@
                 "name": "¿Cómo saben si un reporte es real?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Cuando varios reportes coinciden en la misma zona y horario, el sistema confirma el corte. Un reporte aislado se muestra pero no se toma como confirmación."
+                  "text": "No hay una confirmación automática. El mapa cuenta los reportes por colonia en las últimas horas. Un reporte aislado se muestra, pero no confirma un corte: mientras más vecinos coincidan en la misma colonia, más confiable es la señal."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Cuánto tiempo se queda mi reporte?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Se muestra durante 72 horas y luego deja de contar en el mapa."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Qué se ve de mi comentario?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "El comentario y la descripción de Otro aparecen en la hoja de la colonia, sin tu nombre ni datos de contacto. La página oculta correos y teléfonos, pero no los escribas."
                 }
               },
               {
@@ -237,10 +253,11 @@
         <p class="label">Cómo funciona</p>
         <h2>Tres toques y listo.</h2>
         <p>
-          Abres el mapa, permites tu ubicación, y reportas el estado del agua en
-          tu zona. Tu reporte aparece al instante para que otros vecinos lo
-          vean. Cuando varios reportes coinciden en la misma colonia, el sistema
-          confirma que hay un corte real.
+          Abres el mapa, tocas tu colonia (o usas tu ubicación) y eliges el
+          estado del agua en tu zona. Tu reporte aparece al instante para que
+          otros vecinos lo vean. El mapa muestra cuántos reportes hay por
+          colonia; un reporte aislado no confirma un corte, pero varios en la
+          misma colonia sí dan una señal más clara.
         </p>
         <ul class="status">
           <li>
@@ -256,6 +273,19 @@
             normal
           </li>
         </ul>
+        <p>
+          Con <strong>Con agua</strong> o <strong>Baja presión</strong> también
+          puedes contar cómo está el agua. Si está <strong>limpia</strong>,
+          <strong>cristalina</strong> o <strong>sin olor</strong>, márcalo. Si
+          tiene problemas, puedes marcar <strong>mal olor</strong>, <strong>turbia</strong>,
+          con <strong>sedimentos</strong> o color extraño, u <strong>otro</strong>.
+          Son opciones excluyentes: no se puede marcar agua limpia y turbia a la vez.
+        </p>
+        <p>
+          Los reportes se muestran durante
+          <span data-expiry-hours>72</span> horas y después dejan de contar en
+          el mapa. Solo se puede reportar en la zona metropolitana de Guadalajara.
+        </p>
       </section>
 
       <section id="reportar-siapa" aria-labelledby="reportar-siapa-title">
@@ -321,6 +351,7 @@
           </li>
           <li>Planear si cocinar en casa o comer fuera</li>
           <li>Programar la limpieza cuando sí hay servicio</li>
+          <li>Revisar el calendario de racionamiento del SIAPA y ver tu zona en el mapa</li>
           <li>Avisarle a tu colonia con un solo toque</li>
         </ul>
       </section>
@@ -421,7 +452,8 @@
         <p>
           <strong>Privado.</strong> No pedimos nombre, teléfono ni correo. Tu
           ubicación se usa solo para colocar el reporte en la zona
-          correspondiente.
+          correspondiente. Lo que sí es público son los comentarios y la
+          descripción de "Otro": no escribas nombres, teléfonos ni direcciones.
         </p>
         <p>
           <strong>Comunitario.</strong> Vecinos informando a vecinos. Sin
@@ -472,11 +504,27 @@
             <p>No. Se usa para ubicar el reporte en tu colonia, nada más.</p>
           </details>
           <details>
+            <summary>¿Cuánto tiempo se queda mi reporte?</summary>
+            <p>
+              Se muestra durante <span data-expiry-hours>72</span> horas y luego
+              deja de contar en el mapa.
+            </p>
+          </details>
+          <details>
+            <summary>¿Qué se ve de mi comentario?</summary>
+            <p>
+              El comentario y la descripción de "Otro" aparecen en la hoja de la
+              colonia, sin tu nombre ni datos de contacto. La página oculta correos
+              y teléfonos, pero no reemplaza tu cuidado: no los escribas.
+            </p>
+          </details>
+          <details>
             <summary>¿Cómo saben si un reporte es real?</summary>
             <p>
-              Cuando varios reportes coinciden en la misma zona y horario, el
-              sistema confirma el corte. Un reporte aislado se muestra pero no
-              se toma como confirmación.
+              No hay una confirmación automática. El mapa cuenta los reportes
+              por colonia en las últimas horas. Un reporte aislado se muestra,
+              pero no confirma un corte: mientras más vecinos coincidan en la
+              misma colonia, más confiable es la señal.
             </p>
           </details>
           <details>

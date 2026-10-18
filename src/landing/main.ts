@@ -8,6 +8,15 @@ document.querySelectorAll<HTMLAnchorElement>('[data-map-link]').forEach((a) => {
   a.href = MAP_URL
 })
 
+// Horas que se muestra un reporte. Debe coincidir con REPORT_EXPIRY_HOURS del backend;
+// si la variable no está, el texto se queda con el valor de index.html (72)
+const EXPIRY_HOURS = Number(import.meta.env.VITE_REPORT_EXPIRY_HOURS || 0)
+if (EXPIRY_HOURS > 0) {
+  document.querySelectorAll<HTMLElement>('[data-expiry-hours]').forEach((el) => {
+    el.textContent = String(EXPIRY_HOURS)
+  })
+}
+
 // Menú: en móvil se despliega con el botón; en escritorio siempre está visible
 const header = document.querySelector<HTMLElement>('.site-header')
 const nav = document.querySelector<HTMLElement>('#site-nav')

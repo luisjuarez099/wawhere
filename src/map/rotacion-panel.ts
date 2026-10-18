@@ -130,7 +130,7 @@ export function initRotacionPanel({ onMapaChange, onData, onOpen }: RotacionPane
     a.textContent = 'SIAPA'
     // "2026-10-13" en UTC para que no se corra un día por la zona horaria
     const fecha = fmtFecha.format(new Date(`${d.actualizado}T00:00:00Z`))
-    fuente.append('Fuente: ', a, ` · calendario del ${fecha}. Zonas aproximadas según el mapa oficial.`)
+    fuente.append('Fuente: ', a, ` · calendario del ${fecha}. Zonas y colonias según el mapa oficial.`)
   }
 
   // ─── Abrir y cerrar ───
