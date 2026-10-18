@@ -1,7 +1,7 @@
 import type {
   ExpressionSpecification,
+  GeoJSONFeature,
   LngLatLike,
-  MapGeoJSONFeature,
   Map as MapLibreMap,
 } from 'maplibre-gl'
 import { API_URL, STATUS_COLORS } from './config'
@@ -201,7 +201,8 @@ export function setSelectedColonia(map: MapLibreMap, id: number | null): void {
   map.setFilter(SELECTED_LAYER, ['==', ['id'], id ?? -1])
 }
 
-export function toColonia(feature: MapGeoJSONFeature): Colonia | null {
+// Acepta features de queryRenderedFeatures y de querySourceFeatures: solo usa id y propiedades
+export function toColonia(feature: GeoJSONFeature): Colonia | null {
   if (feature.id == null) return null
   return {
     id: Number(feature.id),

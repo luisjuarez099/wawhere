@@ -1,5 +1,5 @@
 import { ApiError, createReport } from './api'
-import { COMMENT_MAX, QUALITY_LABELS, STATUS_LABELS } from './config'
+import { COMMENT_MAX, QUALITY_BUENA, QUALITY_LABELS, STATUS_LABELS } from './config'
 import { LocationError } from './geolocation'
 import type { Colonia, Report, ReportCreate, ReportQuality, ReportStatus } from './types'
 
@@ -47,6 +47,7 @@ export function initReportSheet({ onSent, onChangeColonia }: ReportSheetOptions)
   const msg = panel.querySelector<HTMLElement>('#report-msg')!
   const qualityField = panel.querySelector<HTMLFieldSetElement>('#quality-field')!
   const otherField = panel.querySelector<HTMLElement>('#quality-other-field')!
+  const buenaGroup = panel.querySelector<HTMLElement>('#quality-buena')!
   const otherInput = panel.querySelector<HTMLInputElement>('#quality-other')!
   const commentInput = panel.querySelector<HTMLTextAreaElement>('#comment')!
   const commentCount = panel.querySelector<HTMLElement>('#comment-count')!
@@ -98,6 +99,15 @@ export function initReportSheet({ onSent, onChangeColonia }: ReportSheetOptions)
     const canHaveQuality = status === 'ok' || status === 'baja'
     qualityField.hidden = !canHaveQuality
     qualityField.disabled = !canHaveQuality || sending
+
+    // "Limpia", "cristalina" y "sin olor" con "Con agua" o "Baja presión": al cambiar de estado se desmarcan
+    const hayAgua = canHaveQuality
+    buenaGroup.hidden = !hayAgua
+    if (!hayAgua) {
+      form.querySelectorAll<HTMLInputElement>('input[name="quality"]').forEach((input) => {
+        if (QUALITY_BUENA.includes(input.value as ReportQuality)) input.checked = false
+      })
+    }
 
     const r = readForm()
     const hasOtro = !!r?.quality?.includes('otro')
@@ -166,7 +176,15 @@ export function initReportSheet({ onSent, onChangeColonia }: ReportSheetOptions)
   // ─── Eventos ───
 
   form.addEventListener('input', sync)
-  form.addEventListener('change', () => {
+  form.addEventListener('change', (e) => {
+    const input = e.target
+    // Buenas condiciones y problemas no van juntos: marcar uno desmarca los del otro grupo
+    if (input instanceof HTMLInputElement && input.name === 'quality' && input.checked) {
+      const buena = QUALITY_BUENA.includes(input.value as ReportQuality)
+      form.querySelectorAll<HTMLInputElement>('input[name="quality"]').forEach((otro) => {
+        if (otro !== input && QUALITY_BUENA.includes(otro.value as ReportQuality) !== buena) otro.checked = false
+      })
+    }
     setMsg('')
     sync()
   })

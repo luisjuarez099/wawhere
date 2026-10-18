@@ -22,12 +22,12 @@ Saber rápido si el problema de agua es solo en tu casa o en toda tu colonia, y 
    - **Tocando su colonia en el mapa**, sin compartir ubicación. Se abre una hoja con la información de la colonia (conteos por estado, calidad reportada y hora del último reporte) y el botón **Reportar en esta colonia**.
    - **Con el botón "Reportar aquí" (GPS):** la ubicación se usa solo dentro del navegador para encontrar la colonia en el mapa. Las coordenadas no se envían al servidor.
 2. Se abre el formulario de reporte en tres pasos:
-   1. **Nuevo reporte:** elige **Con agua**, **Baja presión**, **Sin agua** o **Fuga de agua** (en la calle, banqueta o red). Si eligió *Con agua* o *Baja presión*, puede marcar (opcional) cómo sale el agua: *Mal olor*, *Turbia*, *Sedimentos o color extraño* u *Otro*.
+   1. **Nuevo reporte:** elige **Con agua**, **Baja presión** o **Sin agua**. La opción **Fuga de agua** (en la calle, banqueta o red) está oculta por ahora. Si eligió *Con agua* o *Baja presión*, puede marcar (opcional) cómo sale el agua: *Mal olor*, *Turbia*, *Sedimentos o color extraño* u *Otro*. Con **Con agua** o **Baja presión** también puede marcar que el agua está en buenas condiciones: *Limpia*, *Cristalina* o *Sin olor* (una colonia puede tener baja presión y agua limpia). Esas opciones no van junto con los problemas: marcar una desmarca las de la otra.
    2. **Detalles (opcional):** una descripción corta si marcó *Otro* y un comentario libre.
    3. **Confirmación:** resumen de lo enviado y la opción de avisar a los vecinos (compartir el enlace del mapa).
 3. Al servidor llegan el número de colonia, el estado del agua y, si los llenó, la calidad y los textos opcionales.
 4. El mapa de todas las personas conectadas se actualiza al instante con el nuevo conteo de esa colonia.
-5. Los reportes vencen a las 24 horas (configurable) y se borran.
+5. Los reportes dejan de contar en el mapa a las 24 horas (configurable). No se borran: el histórico los conserva.
 
 El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar reporte**.
 
@@ -37,7 +37,7 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 | ------------------------------------------------------------------------- | --------------------------------- |
 | Colonia del reporte (su id en la tabla de colonias)                       | Coordenadas o ubicación exacta    |
 | Estado: `no`, `baja`, `ok` o `fuga`                                       | Nombre, correo, teléfono o cuenta |
-| Calidad percibida (opcional): `mal_olor`, `turbia`, `sedimentos`, `otro`  | Dirección o calle                 |
+| Calidad percibida (opcional): `mal_olor`, `turbia`, `sedimentos`, `otro`, o `limpia`, `cristalina`, `sin_olor` (con `ok` o `baja`) | Dirección o calle                 |
 | Descripción de "Otro" (opcional, máx. 80 caracteres)                      | Fotos                             |
 | Comentario (opcional, máx. 280 caracteres)                                |                                   |
 | Fecha y hora del reporte                                                  |                                   |
@@ -48,7 +48,7 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 
 **Calidad:** es la percepción de los vecinos, no un análisis de laboratorio.
 
-**Cuánto tiempo:** 24 horas (`REPORT_EXPIRY_HOURS`). Después, un proceso automático borra los reportes de la base de datos.
+**Cuánto tiempo:** los reportes se muestran durante 24 horas (`REPORT_EXPIRY_HOURS`). Después dejan de contar en el mapa, pero **no se borran**: el histórico de reportes de agua depende de conservarlos. Hoy no existe ningún proceso que los elimine.
 
 **Otros datos técnicos, para ser transparentes:**
 
@@ -60,11 +60,11 @@ El reporte mínimo sigue siendo de dos toques: elegir el estado y **Enviar repor
 | Capa                      | Qué muestra                                                                                              | Fuente                                                                                                                                                                        | Cómo llega al mapa                                                                                                                                                                                             |
 | ------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Mapa base**             | Calles, nombres de lugares, relieve urbano                                                               | [OpenStreetMap](https://www.openstreetmap.org/copyright) (© colaboradores de OSM, licencia ODbL), servido por [OpenFreeMap](https://openfreemap.org) con el estilo _positron_ | Tiles vectoriales directo desde OpenFreeMap, sin pasar por la API                                                                                                                                              |
-| **Colonias** 🏘️           | Polígonos y nombres de las colonias de Jalisco                                                           | Instituto de Información Estadística y Geográfica de Jalisco ([IIEG](https://iieg.gob.mx)), capa de colonias con marco INE 2024. 6,624 polígonos                              | El script `scripts/load_colonias.sh` (repo `aguajalisco-api`) descarga el shapefile, lo convierte de UTM 13N a WGS84 con `ogr2ogr` y lo carga en PostGIS. La API lo sirve como vector tiles (MVT) en zoom 9–16 |
+| **Colonias** 🏘️           | Polígonos y nombres de las colonias de Jalisco                                                           | Instituto de Información Estadística y Geográfica de Jalisco ([IIEG](https://iieg.gob.mx)), capa de colonias con marco INE 2024. 6,624 polígonos                              | El script `scripts/load_colonias.sh` (repo `wawhere-api`) descarga el shapefile, lo convierte de UTM 13N a WGS84 con `ogr2ogr` y lo carga en PostGIS. La API lo sirve como vector tiles (MVT) en zoom 9–16 |
 | **Límite de Jalisco**     | Contorno punteado del estado                                                                             | _Fuente por confirmar_                                                                                                                                                        | Archivo estático `public/jalisco.geojson`                                                                                                                                                                      |
 | **Municipios**            | Límites y nombres de los 125 municipios de Jalisco                                                       | [INEGI](https://www.inegi.org.mx/temas/mg/), Marco Geoestadístico 2023 (vía [mexico-geojson](https://github.com/PhantomInsights/mexico-geojson))                              | Archivo estático `public/municipios.geojson` (~700 KB, ~210 KB con gzip). Polígonos simplificados (~30 m en la ZMG, ~100 m en el resto) y un punto interior por municipio para su nombre                       |
 | **Mapas base opcionales** | OpenStreetMap estándar e imágenes satelitales                                                            | [OpenStreetMap](https://www.openstreetmap.org/copyright) y [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9)                    | Tiles raster que se eligen en el botón de capas; solo se descargan cuando están activos                                                                                                                        |
-| **Conteo por colonia** 🔢 | Círculo con el número de reportes vigentes, del color del estado más reportado (en empate, el más grave) | Reportes de los vecinos                                                                                                                                                       | `GET /api/reports/resumen` y actualizaciones por WebSocket                                                                                                                                                     |
+| **Conteo por colonia** 🔢 | Dona con el número de reportes vigentes al centro y un anillo dividido por estado (sin agua, fuga, baja presión, con agua), en grupos y en colonias | Reportes de los vecinos                                                                                                                                                       | `GET /api/reports/resumen` y actualizaciones por WebSocket                                                                                                                                                     |
 | **Zonas de racionamiento** 📅 | Las 7 zonas del esquema rotatorio del SIAPA; las que tienen racionamiento hoy se ven más marcadas. Visible al inicio (`ZONAS_AL_INICIO` en `main.ts`); se apaga desde el panel o el botón de capas | [SIAPA](https://rotaciondeserviciosiapa.jalisco.gob.mx/), mapa de zonas (Google My Maps, KML) y calendario semanal | `scripts/load_rotacion.py` (repo `wawhere-api`) carga el KML en PostGIS; la API lo sirve en `GET /api/rotacion/zonas.geojson`. El calendario va en `app/data/rotacion.json` |
 | **Colonias coloreadas**   | La colonia completa se pinta del color de su estado                                                      | Reportes de los vecinos, sobre la capa de colonias                                                                                                                            | `feature-state` de MapLibre sobre los tiles de colonias                                                                                                                                                        |
 
@@ -142,7 +142,9 @@ Forma de cada colonia en `/resumen`:
 | Tabla      | Quién la crea                                              | Columnas                                                                                                |
 | ---------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `reports`  | La API al arrancar (`create_all`) más migraciones manuales | `id` (UUID), `colonia_id` (FK a `colonias.id`), `status` (`no`/`baja`/`ok`/`fuga`), `quality` (arreglo de texto), `quality_other` (≤ 80), `comment` (≤ 280), `created_at` (timestamptz) |
-| `colonias` | `scripts/load_colonias.sh` (en `aguajalisco-api`)          | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)    |
+| `colonias` | `scripts/load_colonias.sh` (en `wawhere-api`)          | `id`, `geocol`, `nomcol1` (nombre), `municipio`, `cp`, `geom` (MultiPolygon, EPSG:4326, índice GIST)    |
+| `zonas_rotacion` | `scripts/load_rotacion.py` (en `wawhere-api`) | `zona`, `nombre`, `sector`, `geom` (polígonos de las 7 zonas del SIAPA, índice GIST) |
+| `colonias_rotacion` | `scripts/load_rotacion.py` (en `wawhere-api`) | `colonia_id`, `zona`, `porcentaje` (cuánto de cada colonia cae en cada zona) |
 
 ### Tiempo real
 
@@ -175,10 +177,13 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 │   │   ├── types.ts             # Tipos espejo de los schemas de aguajalisco-api
 │   │   ├── api.ts               # GET /resumen, GET /colonias (búsqueda y detalle), POST /reports y WebSocket
 │   │   ├── resumen-store.ts     # Conteos por colonia (HTTP + WebSocket)
-│   │   ├── reports-layer.ts     # Clusters con conteo, mapa de calor y colonias coloreadas
+│   │   ├── reports-layer.ts     # Fuente agrupada de conteos, mapa de calor y colonias coloreadas
+│   │   ├── donut.ts             # Dona SVG: segmentos por estado (función pura) y dibujo
+│   │   ├── donut-markers.ts     # Donas como marcadores HTML sobre grupos y colonias
 │   │   ├── boundaries-layer.ts  # Colonias (vector tiles), límites de Jalisco y municipios, búsqueda de colonia
 │   │   ├── basemaps.ts          # Mapas base: Claro, OpenStreetMap, Satélite
 │   │   ├── layer-controls.ts    # Botón de capas: mapa base y capas visibles
+│   │   ├── legend-control.ts    # Botón de leyenda (debajo de ubicación) con panel de colores y dona de ejemplo
 │   │   ├── geolocation.ts       # Ubicación del usuario y validación de la ZMG
 │   │   └── map.css
 │   └── vite-env.d.ts            # Tipos de las variables VITE_*
@@ -191,13 +196,18 @@ El WebSocket solo envía mensajes; el cliente no manda nada útil. Si se cae, el
 
 - **Hoja de colonia:** al tocar una colonia. Muestra nombre, municipio y CP, el estado dominante ("Mayoría sin agua"), la fecha del último reporte en hora de Guadalajara ("Hoy a las 11:16 a.m."), una barra con los conteos por estado y los problemas de calidad reportados. En el teléfono es una hoja inferior; en tablet y escritorio, un panel a la izquierda.
 - **Racionamiento programado (SIAPA):** el botón de calendario junto a la lupa abre un panel con las zonas que tienen racionamiento hoy ("Hoy martes: baja presión en Zona 2 y Zona 5"), el calendario semanal con el día de hoy resaltado, un interruptor para ver las zonas en el mapa, los contactos del SIAPA (WhatsApp y 073) y la fuente con su fecha. La hoja de cada colonia muestra su zona (o zonas, con el porcentaje de la colonia en cada una), los días y "Hoy le toca" o "Próximo: el viernes". Se aclara que no son cortes totales y que la zona es aproximada. Detalles: `wawhere-api/docs/rotacion-siapa.md`.
-- **Resumen de reportes:** arriba del panel de abajo, una línea con un punto "en vivo": "8 reportes en las últimas 24 h · 4 colonias". *Resumen* despliega la barra y los conteos por estado con porcentaje, colonias con reportes, colonias mayormente sin agua, reportes desde el inicio y la hora de la última actualización. Las cifras de 24 h se calculan con el mismo resumen del mapa, así que cambian con cada reporte en vivo. Por ahora no cuenta las fugas.
+- **Resumen de reportes:** arriba del panel de abajo, siempre visible: el conteo "4 reportes de agua en las últimas 24 h" (y la fuga aparte, si hay), la barra y los conteos por estado con porcentaje, colonias con reportes, colonias mayormente sin agua, reportes desde el inicio y la hora de la última actualización. Sin reportes dice "Sin reportes en las últimas 24 h. ¡Sé el primero!", y mientras carga, "Cargando reportes…". La fila con el titular ("N colonias reportan sin agua") y el botón *Resumen* sigue en el HTML pero oculta (`hidden` en `#stats-toggle`). Las cifras de 24 h se calculan con el mismo resumen del mapa, así que cambian con cada reporte en vivo. Los reportes de agua suman en "N reportes de agua en las últimas 24 h"; las fugas van en una línea aparte ("N reportes de fuga"). El histórico ("Reportes de agua desde el inicio") cuenta solo reportes de agua.
 - **Buscador de colonias:** la lupa junto al logo despliega una barra de búsqueda; se cierra con la misma lupa, con ✕, con `Esc` o tocando el mapa. Se navega con flechas y Enter. Al elegir una colonia se abre su hoja y el mapa la acerca sin que la tape la hoja. En el teléfono el logo se oculta mientras la barra está abierta.
-- **Fugas de agua:** cuarto estado del reporte, en cian. Cada fuga cuenta como un reporte más de la colonia: suma en su círculo y en los grupos, y si es el estado más reportado, el círculo y la colonia se pintan de cian. En empate entre estados gana el más grave: sin agua, fuga, baja presión, con agua.
-- **Clusters y mapa de calor:** los puntos de colonias cercanas se agrupan hasta zoom 13 en un círculo con la suma de reportes, del color del estado más frecuente; tocarlo acerca el mapa. El mapa de calor (morado, para no confundirse con los colores de suministro) pesa los problemas: *sin agua* cuenta 1, *baja presión* y *fuga* 0.5; se desvanece de cerca, donde ya se ven las colonias coloreadas. Ambos se calculan con un punto interior de cada colonia, nunca con la ubicación de quien reportó, y se pueden apagar en el botón de capas.
+- **Fugas de agua (oculto por ahora):** el backend sigue aceptando el estado `fuga`, pero el formulario no lo ofrece (la opción tiene `hidden`) y el mapa no lo dibuja: no hay segmento en las donas, no tiñe colonias, no suma al calor, no está en la leyenda ni en la hoja de colonia. Sí se cuenta aparte en el panel de resumen. Para volver a mostrarla, quitar `hidden` de su opción en `mapa/index.html` y restaurar los segmentos en `config.ts` (`DONUT_ORDER`), la leyenda y el tinte.
+- **Donas, clusters y mapa de calor:** cada colonia con reportes se dibuja como una dona: centro blanco con el total y un anillo con la parte de cada estado, de más grave a menos grave en sentido horario desde las 12 (sin agua, baja presión, con agua; las fugas, por ahora, no se dibujan). Así se distingue un problema generalizado de una zona dividida. Cada estado presente ocupa al menos 6° del anillo para que no desaparezca, así que la proporción es aproximada; el número exacto está en la hoja de colonia. Hasta zoom 13 las colonias cercanas se agrupan en una dona con la suma de sus conteos; tocarla acerca el mapa, y tocar la dona de una colonia abre su hoja. Las donas son botones con el desglose en texto (`aria-label` y `title`), y se apagan con *Número de reportes* en el botón de capas. Son marcadores HTML con SVG (`donut-markers.ts`); si algún día hay más de ~300 visibles a la vez, conviene pasarlas a imágenes en una capa `symbol`. El mapa de calor (morado, para no confundirse con los colores de suministro) pesa los problemas: *sin agua* cuenta 1 y *baja presión* 0.5 (las fugas, por ahora, no); se desvanece de cerca, donde ya se ven las colonias coloreadas. Ambos se calculan con un punto interior de cada colonia, nunca con la ubicación de quien reportó. Al entrar, el mapa de calor viene apagado; se prende en el botón de capas.
 - **Formulario de reporte:** hoja de pantalla completa en el teléfono y panel lateral de 400 px en pantallas de 768 px o más, para que el mapa siga visible.
-- **Colores:** los de estado (verde, amarillo, rojo y cian para fugas) solo significan estado; la calidad usa siempre una familia naranja para no confundir "turbia" con "baja presión". El color nunca es la única señal: cada estado lleva su texto y los problemas marcados llevan "✓".
+- **Colores:** los de estado (verde, amarillo y rojo; el cian de fugas está oculto por ahora) solo significan estado; la calidad usa siempre una familia naranja para no confundir "turbia" con "baja presión". El color nunca es la única señal: cada estado lleva su texto y los problemas marcados llevan "✓".
 - **Accesibilidad:** estados y problemas son inputs nativos (radio y checkbox), se puede usar todo con teclado, `Esc` cierra la hoja de arriba y el foco vuelve al botón que la abrió. Objetivos táctiles de 44 px como mínimo y campos de texto de 16 px para que iOS no haga zoom.
+- **Leyenda:** botón con ícono de lista debajo del de ubicación, con el estilo de los controles de MapLibre. Abre un panel a la izquierda, como el de capas, con los tres estados de agua y una dona de ejemplo que explica el número y el anillo. Se cierra con el mismo botón, con `Esc` o tocando fuera.
+- **Atribución:** queda cerrada al cargar (solo la "i"); MapLibre la abre sola con `compact: true`, así que `main.ts` la cierra en el `load`.
+- **Panel de reporte plegable:** el botón "Ocultar", arriba del panel, lo deja en una barra "Reportar" para ver más mapa. Los controles de abajo bajan con él. Empieza abierto.
+- **Capas al entrar:** colonias, círculos con número, zonas de racionamiento y colonias coloreadas. El mapa de calor y los municipios vienen apagados (`CALOR_AL_INICIO` y `MUNICIPIOS_AL_INICIO` en `main.ts`).
+- **Clima oculto:** el control de clima no se muestra mientras `CLIMA_VISIBLE` sea `false` en `main.ts`.
 - **Tipografía:** Bricolage Grotesque (títulos) y Public Sans (formularios), desde Google Fonts.
 
 ## Desarrollo
@@ -221,6 +231,23 @@ Todas son opcionales y se inyectan en tiempo de build (ver `.env.example`).
 | `VITE_REPORT_EXPIRY_HOURS` | `24`                 | Debe coincidir con `REPORT_EXPIRY_HOURS` del backend |
 
 ## Cambios recientes
+
+### Donas para reportes mixtos
+
+- **Grupos y colonias como donas:** el círculo de un solo color se reemplazó por un anillo dividido por estado, con el total al centro. No cambia la API: los conteos ya venían en `/resumen`.
+- **Tocar:** la dona de un grupo acerca el mapa; la de una colonia abre su hoja (el CP se toma del polígono, porque `/resumen` no lo trae).
+- **Sin cambios** en el mapa de calor, las colonias coloreadas ni la capa del SIAPA.
+- **Pendiente:** revisar en teléfono (iPhone y Android), en el mapa satelital y el rendimiento con muchas donas.
+
+### Presentación del mapa
+
+- **Resumen siempre visible:** se ocultó la fila del titular y el botón *Resumen*; las estadísticas se ven sin desplegar nada. El subtítulo del panel aclara que son reportes de vecinos, no datos oficiales, y el plazo sale de `VITE_REPORT_EXPIRY_HOURS`.
+- **Leyenda de colores:** botón debajo del de ubicación que abre un panel. La atribución ya no se abre sola.
+- **Panel de reporte plegable:** "Ocultar" deja solo la barra "Reportar" para ver más mapa.
+- **Menos capas al entrar:** mapa de calor y municipios apagados por defecto.
+- **Clima oculto** por ahora (`CLIMA_VISIBLE = false` en `main.ts`).
+- **Estados de carga y error** en el resumen, en vez de quedarse en blanco.
+- **Pendiente:** revisar el diseño en teléfono (390 px) y decidir cómo cuentan las fugas en el titular y la barra.
 
 ### Calidad del agua y hoja de colonia
 

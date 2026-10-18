@@ -136,8 +136,14 @@
       id="report-launcher"
       aria-labelledby="launcher-title"
     >
-      <div class="stats" id="stats" hidden>
-        <button type="button" class="stats-toggle" id="stats-toggle" aria-expanded="false" aria-controls="stats-detail">
+      <button type="button" class="panel-toggle" id="panel-toggle" aria-expanded="true" aria-controls="panel-body">
+        <span id="panel-toggle-label">Ocultar</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      <div class="report-panel-body" id="panel-body">
+      <div class="stats" id="stats">
+        <!-- Oculto: las estadísticas de abajo quedan siempre visibles -->
+        <button type="button" class="stats-toggle" id="stats-toggle" aria-expanded="true" aria-controls="stats-detail" hidden>
           <span class="stats-live" aria-hidden="true"></span>
           <span class="stats-summary" id="stats-summary"></span>
           <span class="stats-more">
@@ -145,13 +151,15 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
           </span>
         </button>
-        <div class="stats-detail" id="stats-detail" hidden>
+        <div class="stats-detail" id="stats-detail">
+          <p class="stats-total" id="stats-total"></p>
+          <p class="stats-fugas" id="stats-fugas"></p>
           <div class="cs-bar" id="stats-bar" role="img"></div>
           <ul class="cs-counts" id="stats-counts"></ul>
           <dl class="stats-facts">
             <div><dt>Colonias con reportes</dt><dd id="stats-colonias">0</dd></div>
             <div><dt>Colonias mayormente sin agua</dt><dd id="stats-sin-agua">0</dd></div>
-            <div><dt>Reportes desde el inicio</dt><dd id="stats-historico">—</dd></div>
+            <div><dt>Reportes de agua desde el inicio</dt><dd id="stats-historico">—</dd></div>
           </dl>
           <p class="stats-updated" id="stats-updated"></p>
         </div>
@@ -160,11 +168,13 @@
       <h1 class="report-title" id="launcher-title">
         ¿Cómo está el agua en tu colonia?
       </h1>
+      <p class="report-sub" id="report-sub">Reportes de vecinos. No son datos oficiales.</p>
       <p class="report-target" id="report-target" hidden></p>
       <button type="button" class="btn-primary" id="report-open" disabled>
         Reportar aquí
       </button>
       <p class="report-msg" id="launcher-msg" role="status"></p>
+      </div>
     </section>
 
     <section class="colonia-sheet" id="colonia-sheet" aria-labelledby="cs-nombre" hidden>
@@ -265,7 +275,8 @@
                   <input class="sr-input" type="radio" name="status" value="no" />
                   <span class="status-dot" style="--dot: var(--c-no)" aria-hidden="true"></span>Sin agua
                 </label>
-                <label class="status-option">
+                <!-- Oculta por ahora: el backend sigue aceptando fugas. Quitar hidden para volver a mostrarla -->
+                <label class="status-option" hidden>
                   <input class="sr-input" type="radio" name="status" value="fuga" />
                   <span class="status-dot" style="--dot: var(--c-fuga)" aria-hidden="true"></span>Fuga de agua
                 </label>
@@ -276,6 +287,12 @@
               <legend class="field-label">
                 ¿Notas algo en el agua? <span class="field-meta">Opcional · varias</span>
               </legend>
+              <!-- Con "Con agua" o "Baja presión": se oculta según el estado. Excluyente con los problemas -->
+              <div class="chips quality-buena" id="quality-buena" hidden>
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="limpia" />Limpia</label>
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="cristalina" />Cristalina</label>
+                <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="sin_olor" />Sin olor</label>
+              </div>
               <div class="chips">
                 <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="mal_olor" />Mal olor</label>
                 <label class="chip"><input class="sr-input" type="checkbox" name="quality" value="turbia" />Turbia</label>

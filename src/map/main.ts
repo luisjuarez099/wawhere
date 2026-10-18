@@ -11,6 +11,8 @@ import { connectRealtime, fetchResumen, fetchStats } from './api'
 import {
   COLONIA_HIT_LAYER,
   COLONIA_LAYERS,
+  COLONIA_SOURCE,
+  COLONIA_SOURCE_LAYER,
   MUNICIPIO_LAYERS,
   addBoundaryLayers,
   coloniaAt,
@@ -18,12 +20,13 @@ import {
   toColonia,
 } from './boundaries-layer'
 import { BASEMAPS, DEFAULT_BASEMAP, addBasemaps } from './basemaps'
-import { MAP_MAX_BOUNDS, MAP_MIN_ZOOM, MAP_STYLE_URL, ZMG_CENTER, ZMG_ZOOM } from './config'
+import { MAP_MAX_BOUNDS, MAP_MIN_ZOOM, MAP_STYLE_URL, REPORT_EXPIRY_MS, ZMG_CENTER, ZMG_ZOOM } from './config'
 import { LocationError, getPosition, isInsideZmg } from './geolocation'
 import { LayerControls } from './layer-controls'
-import { CLUSTER_LAYER, HEAT_LAYERS, RESUMEN_LAYERS, addResumenLayer, setLayersVisible } from './reports-layer'
+import { HEAT_LAYERS, RESUMEN_LAYERS, RESUMEN_SOURCE, addResumenLayer, setLayersVisible } from './reports-layer'
+import { initDonutMarkers } from './donut-markers'
 import { ResumenStore } from './resumen-store'
-import type { Colonia } from './types'
+import type { Colonia, ColoniaResumenProps } from './types'
 import { errorMessage, initReportSheet } from './report-sheet'
 import { initColoniaSheet } from './colonia-sheet'
 import { initColoniaSearch } from './colonia-search'
@@ -31,6 +34,7 @@ import { initStatsPanel } from './stats-panel'
 import { ROTACION_LAYERS, addRotacionLayers, setZonasHoy } from './rotacion-layer'
 import { initRotacionPanel } from './rotacion-panel'
 import { ClimaControl } from './climaLayer'
+import { LegendControl } from './legend-control'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
 // El límite real lo pone la API; esto solo cuida al usuario honesto.
@@ -70,7 +74,14 @@ const map = new MapLibreMap({
 
 const store = new ResumenStore()
 let render: ReturnType<typeof addResumenLayer> | null = null
+// Donas de conteos: se crean en el load; el botón de capas las prende/apaga
+let donuts: ReturnType<typeof initDonutMarkers> | null = null
+let conteosVisibles = true
 const stats = initStatsPanel()
+stats.load()
+// Subtítulo del panel: el plazo sale de la misma constante que usa el resumen
+const reportSub = document.querySelector<HTMLElement>('#report-sub')!
+reportSub.textContent = `Reportes de vecinos de las últimas ${Math.round(REPORT_EXPIRY_MS / 3_600_000)} h. No son datos oficiales.`
 const refresh = () => {
   const data = store.toGeoJSON()
   render?.(data)
@@ -138,6 +149,12 @@ let setZonasCheckbox: ((on: boolean) => void) | null = null
 // Las zonas se ven desde el inicio
 const ZONAS_AL_INICIO = true
 let zonasVisibles = ZONAS_AL_INICIO
+// Menos capas al entrar: el mapa de calor repite los círculos y los municipios
+// distraen. Se prenden desde el botón de capas.
+const CALOR_AL_INICIO = false
+const MUNICIPIOS_AL_INICIO = false
+// Clima oculto por ahora (no se carga ni se muestra); poner en true para regresarlo
+const CLIMA_VISIBLE = false
 
 map.addControl(
   new LayerControls()
@@ -152,13 +169,17 @@ map.addControl(
     })
     .overlay({
       label: 'Mapa de calor',
-      initial: true,
+      initial: CALOR_AL_INICIO,
       onChange: (on) => setLayersVisible(map, HEAT_LAYERS, on),
     })
     .overlay({
       label: 'Número de reportes',
       initial: true,
-      onChange: (on) => setLayersVisible(map, RESUMEN_LAYERS, on),
+      onChange: (on) => {
+        conteosVisibles = on
+        setLayersVisible(map, RESUMEN_LAYERS, on)
+        donuts?.setVisible(on)
+      },
     })
     .overlay({
       label: 'Zonas de racionamiento',
@@ -176,13 +197,23 @@ map.addControl(
     })
     .overlay({
       label: 'Municipios',
-      initial: true,
+      initial: MUNICIPIOS_AL_INICIO,
       onChange: (on) => setLayersVisible(map, MUNICIPIO_LAYERS, on),
     }),
   'top-right',
 )
 map.addControl(new NavigationControl({ showCompass: false }), 'top-right')
 map.addControl(geolocate, 'top-right')
+// Leyenda: botón debajo del de ubicación
+map.addControl(new LegendControl(), 'top-right')
+
+// La atribución compacta se abre sola al cargar el estilo (MapLibre solo la cierra al
+// arrastrar). Se deja cerrada: se abre con su botón "i".
+function cerrarAtribucion(): void {
+  map.getContainer().querySelector('.maplibregl-ctrl-attrib.maplibregl-compact')?.classList.remove('maplibregl-compact-show')
+}
+map.once('load', cerrarAtribucion)
+map.once('idle', cerrarAtribucion)
 
 // Los controles de abajo (atribución) quedan por encima de lo que esté abajo:
 // el panel fijo o, en el teléfono, la hoja de colonia. La hoja de reporte no
@@ -195,6 +226,18 @@ const bottomObserver = new ResizeObserver(measureBottom)
 bottomObserver.observe(launcher)
 bottomObserver.observe(coloniaSheetEl)
 phone.addEventListener('change', measureBottom)
+
+// Abrir/cerrar el panel de reporte para ver más mapa. Al cerrarlo, measureBottom
+// (ResizeObserver) baja los controles de abajo.
+const panelToggle = document.querySelector<HTMLButtonElement>('#panel-toggle')!
+const panelToggleLabel = document.querySelector<HTMLElement>('#panel-toggle-label')!
+const panelBody = document.querySelector<HTMLElement>('#panel-body')!
+function setPanelOpen(open: boolean): void {
+  panelBody.hidden = !open
+  panelToggle.setAttribute('aria-expanded', String(open))
+  panelToggleLabel.textContent = open ? 'Ocultar' : 'Reportar'
+}
+panelToggle.addEventListener('click', () => setPanelOpen(panelBody.hidden))
 
 // ─── Colonia elegida a mano ───
 
@@ -227,6 +270,23 @@ function selectColonia(colonia: Colonia | null): void {
 function chooseColonia(colonia: Colonia): void {
   selectColonia(colonia)
   void coloniaSheet.open(colonia, store.get(colonia.id)?.properties)
+}
+
+/** Tocar la dona de una colonia: igual que tocar su polígono. */
+function coloniaDesdeResumen(p: ColoniaResumenProps): void {
+  // El resumen no trae CP: se toma del polígono si sus tiles ya están cargados
+  const [poligono] = map.querySourceFeatures(COLONIA_SOURCE, {
+    sourceLayer: COLONIA_SOURCE_LAYER,
+    filter: ['==', ['id'], p.colonia_id],
+  })
+  const colonia = (poligono && toColonia(poligono)) || {
+    id: p.colonia_id,
+    nombre: p.nombre,
+    municipio: p.municipio,
+    cp: '',
+  }
+  if (colonia.id === selected?.id) clearColonia()
+  else chooseColonia(colonia)
 }
 
 function clearColonia(): void {
@@ -408,6 +468,8 @@ async function loadResumen(): Promise<void> {
     if ((err as DOMException).name === 'AbortError') return
     console.error(err)
     setStatus('No se pudieron cargar los reportes.')
+    // Si nunca llegó un resumen, el panel no debe quedarse en "Cargando"
+    if (!render) stats.fail()
   }
 }
 
@@ -418,23 +480,27 @@ map.on('load', () => {
   // Primero colonias y límite estatal para que queden debajo del resumen
   addBoundaryLayers(map)
   render = addResumenLayer(map)
+  donuts = initDonutMarkers(map, { source: RESUMEN_SOURCE, onColonia: coloniaDesdeResumen })
+  donuts.setVisible(conteosVisibles)
   // Zonas del SIAPA: encima de colonias, debajo del mapa de calor y los conteos
   addRotacionLayers(map, HEAT_LAYERS[0])
   // Lluvia satelital: encima del mapa base y colonias, debajo de los conteos
   // Clima: encima de colonias y mapa base, debajo de los conteos de reportes
-  map.addControl(new ClimaControl({ beforeId: HEAT_LAYERS[0] }), 'bottom-left')
+  if (CLIMA_VISIBLE) map.addControl(new ClimaControl({ beforeId: HEAT_LAYERS[0] }), 'bottom-left')
 
   mapReady = true
   setReportEnabled(true)
   if (zonasVisibles) setLayersVisible(map, ROTACION_LAYERS, true)
+  // Las capas nacen visibles en el estilo; se aplica el estado inicial elegido arriba
+  setLayersVisible(map, HEAT_LAYERS, CALOR_AL_INICIO)
+  setLayersVisible(map, MUNICIPIO_LAYERS, MUNICIPIOS_AL_INICIO)
   marcarZonasHoy()
   void loadResumen()
 
   // Tocar una colonia abre su hoja y la deja elegida para reportar;
   // tocarla otra vez la deselecciona y cierra la hoja
   map.on('click', (e) => {
-    // Tocar un grupo acerca el mapa (reports-layer.ts); no elige la colonia de abajo
-    if (map.queryRenderedFeatures(e.point, { layers: [CLUSTER_LAYER] }).length) return
+    // Las donas detienen su propio clic (donut-markers.ts): aquí solo llegan los polígonos
     const feature = map.queryRenderedFeatures(e.point, { layers: [COLONIA_HIT_LAYER] })[0]
     const colonia = feature ? toColonia(feature) : null
     if (!colonia) return

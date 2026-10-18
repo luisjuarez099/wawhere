@@ -1,12 +1,13 @@
 import { getColoniaComentarios, getColoniaDetalle } from './api'
-import { DIAS, QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS, ZONA_COLORS, listaDias } from './config'
+import { DIAS, QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS, ZONA_COLORS, estadoAgua, listaDias } from './config'
 import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, ReportStatus, RotacionColonia } from './types'
 
 // Hoja informativa al tocar una colonia (pantalla 1 del diseño): suministro,
 // calidad reportada y último reporte, con el botón para reportar ahí.
 
 const TZ = 'America/Mexico_City'
-const STATUS_ORDER: ReportStatus[] = ['no', 'baja', 'ok', 'fuga']
+// Sin fugas por ahora: solo se muestran en el backend, no en la hoja
+const STATUS_ORDER: ReportStatus[] = ['no', 'baja', 'ok']
 const STATUS_COLOR: Record<ReportStatus, string> = {
   no: 'var(--c-no)',
   baja: 'var(--c-baja)',
@@ -54,7 +55,7 @@ function detalleDesdeResumen(colonia: Colonia, r?: ColoniaResumenProps): Colonia
     total: r?.total ?? 0,
     status,
     status_dominante: r?.total ? r.estado : null,
-    quality: { mal_olor: 0, turbia: 0, sedimentos: 0, otro: 0 },
+    quality: { mal_olor: 0, turbia: 0, sedimentos: 0, otro: 0, limpia: 0, cristalina: 0, sin_olor: 0 },
     quality_total: 0,
     ultimo_reporte: null,
     comentarios: [],
@@ -202,11 +203,16 @@ export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheet
     el.nombre.textContent = d.nombre || 'Colonia sin nombre'
     el.sub.textContent = [d.municipio, d.cp && `CP ${d.cp}`].filter(Boolean).join(' · ')
 
-    // Estado dominante
-    el.badge.hidden = d.total === 0
-    if (d.status_dominante) {
-      el.badge.dataset.status = d.status_dominante
-      el.badge.textContent = `Mayoría ${STATUS_LABELS[d.status_dominante].toLowerCase()}`
+    // Estado dominante, solo con reportes de agua (las fugas no cuentan aquí por ahora).
+    // Empate entre estados: "Reportes mixtos", como antes.
+    const { no, baja, ok } = d.status
+    const max = Math.max(no, baja, ok)
+    const empate = [no, baja, ok].filter((n) => n === max).length > 1
+    const dominante = empate ? null : estadoAgua(no, baja, ok)
+    el.badge.hidden = no + baja + ok === 0
+    if (dominante) {
+      el.badge.dataset.status = dominante
+      el.badge.textContent = `Mayoría ${STATUS_LABELS[dominante].toLowerCase()}`
     } else {
       delete el.badge.dataset.status
       el.badge.textContent = 'Reportes mixtos'

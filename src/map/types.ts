@@ -3,7 +3,8 @@ import type { Feature, FeatureCollection, Point } from 'geojson'
 export type ReportStatus = 'no' | 'baja' | 'ok' | 'fuga'
 
 // Mismos valores que QualityEnum en wawhere-api/app/schemas/report.py
-export type ReportQuality = 'mal_olor' | 'turbia' | 'sedimentos' | 'otro'
+// Problemas del agua, y agua en buenas condiciones (solo con "Con agua" y sin problemas)
+export type ReportQuality = 'mal_olor' | 'turbia' | 'sedimentos' | 'otro' | 'limpia' | 'cristalina' | 'sin_olor'
 
 // Espejo de ReportResponse en wawhere-api/app/schemas/report.py
 export interface Report {

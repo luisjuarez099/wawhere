@@ -1,15 +1,20 @@
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
 import { COLONIA_SOURCE, COLONIA_SOURCE_LAYER } from './boundaries-layer'
-import { STATUS_COLORS } from './config'
+import { estadoAgua } from './config'
 import type { ResumenCollection } from './types'
 
-const SOURCE = 'resumen'
+/** Fuente agrupada de los conteos por colonia; las donas (donut-markers.ts) la leen. */
+export const RESUMEN_SOURCE = 'resumen'
+const SOURCE = RESUMEN_SOURCE
 const HEAT_SOURCE = 'resumen-calor'
 
-export const CLUSTER_LAYER = 'resumen-grupo'
+const CLUSTER_LAYER = 'resumen-grupo'
 
-/** Capas que prende/apaga "Número de reportes": grupos y círculos por colonia. */
-export const RESUMEN_LAYERS = [CLUSTER_LAYER, 'resumen-grupo-numero', 'resumen-circulo', 'resumen-numero'] as const
+/**
+ * Capas que prende/apaga "Número de reportes", junto con las donas. Son círculos
+ * transparentes: no se ven, pero mantienen cargada la fuente para las donas.
+ */
+export const RESUMEN_LAYERS = [CLUSTER_LAYER, 'resumen-circulo'] as const
 
 /** Capa que prende/apaga "Mapa de calor". Va debajo de los círculos. */
 export const HEAT_LAYERS = ['resumen-calor'] as const
@@ -17,45 +22,16 @@ export const HEAT_LAYERS = ['resumen-calor'] as const
 // Hasta este zoom las colonias cercanas se agrupan en un solo círculo
 const CLUSTER_MAX_ZOOM = 13
 
-const estadoColor: ExpressionSpecification = [
-  'match', ['get', 'estado'],
-  'no', STATUS_COLORS.no,
-  'baja', STATUS_COLORS.baja,
-  'fuga', STATUS_COLORS.fuga,
-  STATUS_COLORS.ok,
-]
-
-// Estado del grupo: el que suma más reportes; en empate, el más grave (igual que la API
-// por colonia): sin agua, fuga, baja presión, con agua
-const maxConteo: ExpressionSpecification = [
-  'max', ['get', 'sin_agua'], ['get', 'fugas'], ['get', 'baja_presion'], ['get', 'con_agua'],
-]
-const grupoEstado: ExpressionSpecification = [
-  'case',
-  ['==', ['get', 'sin_agua'], maxConteo], 'no',
-  ['==', ['get', 'fugas'], maxConteo], 'fuga',
-  ['==', ['get', 'baja_presion'], maxConteo], 'baja',
-  'ok',
-]
-const grupoColor: ExpressionSpecification = [
-  'match', grupoEstado,
-  'no', STATUS_COLORS.no,
-  'baja', STATUS_COLORS.baja,
-  'fuga', STATUS_COLORS.fuga,
-  STATUS_COLORS.ok,
-]
-
 const sinGrupo: ExpressionSpecification = ['!', ['has', 'point_count']]
 const esGrupo: ExpressionSpecification = ['has', 'point_count']
 
 /**
  * Reportes por colonia en tres capas, todas sobre el punto interior de cada
  * colonia (nunca la ubicación de nadie):
- * - Mapa de calor de los reportes de problemas (sin agua, fugas y baja presión).
- * - Grupos: a zoom bajo, las colonias cercanas se juntan en un círculo con la
- *   suma de sus reportes, del color del estado que más se reporta.
- * - Círculo por colonia al acercarse, con su número de reportes (las fugas
- *   cuentan como un reporte más de la colonia).
+ * - Mapa de calor de los reportes de problemas de agua (sin agua y baja presión; sin fugas por ahora).
+ * - Grupos: a zoom bajo, las colonias cercanas se juntan y suman sus conteos.
+ * - Punto por colonia al acercarse. Grupos y colonias se dibujan como donas con
+ *   el desglose por estado (donut-markers.ts); las fugas cuentan como un reporte más.
  * Además tiñe el polígono de cada colonia con su estado (feature-state).
  */
 export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => void {
@@ -88,7 +64,7 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
       // Pesan los problemas: "con agua" no debe calentar una zona
       'heatmap-weight': [
         'interpolate', ['linear'],
-        ['+', ['get', 'sin_agua'], ['*', 0.5, ['+', ['get', 'baja_presion'], ['get', 'fugas']]]],
+        ['+', ['get', 'sin_agua'], ['*', 0.5, ['get', 'baja_presion']]],
         0, 0,
         10, 1,
       ],
@@ -108,80 +84,12 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
     },
   })
 
-  map.addLayer({
-    id: CLUSTER_LAYER,
-    type: 'circle',
-    source: SOURCE,
-    filter: esGrupo,
-    paint: {
-      'circle-color': grupoColor,
-      'circle-radius': ['interpolate', ['linear'], ['get', 'total'], 2, 16, 20, 22, 100, 30],
-      'circle-stroke-width': 3,
-      'circle-stroke-color': '#fff',
-      'circle-stroke-opacity': 0.9,
-    },
-  })
-
-  map.addLayer({
-    id: 'resumen-grupo-numero',
-    type: 'symbol',
-    source: SOURCE,
-    filter: esGrupo,
-    layout: {
-      'text-field': ['case', ['>', ['get', 'total'], 999], '999+', ['to-string', ['get', 'total']]],
-      'text-font': ['Noto Sans Regular'],
-      'text-size': 13,
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-    },
-    paint: {
-      'text-color': ['match', grupoEstado, 'baja', '#1d2327', '#fff'],
-    },
-  })
-
-  map.addLayer({
-    id: 'resumen-circulo',
-    type: 'circle',
-    source: SOURCE,
-    filter: sinGrupo,
-    paint: {
-      'circle-color': estadoColor,
-      // Crece con el número de reportes, sin tapar la colonia
-      'circle-radius': ['interpolate', ['linear'], ['get', 'total'], 1, 11, 10, 15, 50, 22],
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#fff',
-    },
-  })
-
-  map.addLayer({
-    id: 'resumen-numero',
-    type: 'symbol',
-    source: SOURCE,
-    filter: sinGrupo,
-    layout: {
-      'text-field': ['case', ['>', ['get', 'total'], 99], '99+', ['to-string', ['get', 'total']]],
-      'text-font': ['Noto Sans Regular'],
-      'text-size': 12,
-      'text-allow-overlap': true,
-      'text-ignore-placement': true,
-    },
-    paint: {
-      // Sobre amarillo el blanco casi no se lee
-      'text-color': ['match', ['get', 'estado'], 'baja', '#1d2327', '#fff'],
-    },
-  })
-
-  // Tocar un grupo acerca el mapa hasta que se separe
-  map.on('click', CLUSTER_LAYER, async (e) => {
-    const feature = e.features?.[0]
-    if (!feature || feature.geometry.type !== 'Point') return
-    const zoom = await map.getSource<GeoJSONSource>(SOURCE)!.getClusterExpansionZoom(feature.properties.cluster_id)
-    map.easeTo({ center: feature.geometry.coordinates as [number, number], zoom })
-  })
-  for (const layer of [CLUSTER_LAYER, 'resumen-circulo']) {
-    map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'))
-    map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''))
-  }
+  // Grupos y colonias se dibujan como donas HTML (donut-markers.ts). Estas capas son
+  // transparentes y sin eventos: solo mantienen cargada la fuente, porque
+  // querySourceFeatures no responde si ninguna capa visible la usa.
+  const invisible = { 'circle-radius': 1, 'circle-opacity': 0, 'circle-stroke-opacity': 0 } as const
+  map.addLayer({ id: CLUSTER_LAYER, type: 'circle', source: SOURCE, filter: esGrupo, paint: invisible })
+  map.addLayer({ id: 'resumen-circulo', type: 'circle', source: SOURCE, filter: sinGrupo, paint: invisible })
 
   // Colonias teñidas ahora mismo, para quitar el color a las que ya no tienen reportes
   const tenidas = new Set<number>()
@@ -190,10 +98,14 @@ export function addResumenLayer(map: MapLibreMap): (data: ResumenCollection) => 
     const siguientes = new Set<number>()
     for (const f of data.features) {
       const id = f.properties.colonia_id
+      // Solo reportes de agua tiñen la colonia: una colonia con solo fugas queda sin color
+      const p = f.properties
+      const estado = estadoAgua(p.sin_agua, p.baja_presion, p.con_agua)
+      if (!estado) continue
       siguientes.add(id)
       map.setFeatureState(
         { source: COLONIA_SOURCE, sourceLayer: COLONIA_SOURCE_LAYER, id },
-        { estado: f.properties.estado },
+        { estado },
       )
     }
     for (const id of tenidas) {

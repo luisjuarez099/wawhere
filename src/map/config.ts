@@ -40,6 +40,40 @@ export const STATUS_LABELS: Record<ReportStatus, string> = {
   fuga: 'Fuga de agua',
 }
 
+// ─── Donas de reportes ───
+
+/**
+ * Conteo por estado de agua en /resumen. Orden de la dona: de más grave a menos grave, desde las 12.
+ * Las fugas no van aquí: por ahora solo se cuentan aparte en el panel.
+ */
+export const DONUT_ORDER = [
+  { key: 'sin_agua', status: 'no' },
+  { key: 'baja_presion', status: 'baja' },
+  { key: 'con_agua', status: 'ok' },
+] as const satisfies readonly { key: string; status: ReportStatus }[]
+
+/**
+ * Estado dominante de una colonia considerando solo reportes de agua. Empate: el más grave.
+ * Devuelve null si no hay reportes de agua (una colonia solo con fugas no se tiñe).
+ */
+export function estadoAgua(no: number, baja: number, ok: number): ReportStatus | null {
+  if (no + baja + ok === 0) return null
+  if (no >= baja && no >= ok) return 'no'
+  if (baja >= ok) return 'baja'
+  return 'ok'
+}
+
+// Cada estado presente ocupa al menos esto del anillo, para que ninguno desaparezca
+export const MIN_SEGMENT_DEG = 6
+
+/** Diámetro y grosor del anillo según el total de reportes. */
+export function donutSize(total: number): { d: number; grosor: number } {
+  if (total >= 100) return { d: 58, grosor: 8 }
+  if (total >= 20) return { d: 50, grosor: 7 }
+  if (total >= 5) return { d: 42, grosor: 6 }
+  return { d: 34, grosor: 5 }
+}
+
 // Zonas del esquema rotatorio: paleta propia (no la del SIAPA) que no se confunde
 // con los colores de estado (verde, amarillo, rojo, cian) ni con el mapa de calor
 export const ZONA_COLORS: Record<number, string> = {
@@ -62,14 +96,20 @@ export function listaDias(dias: number[]): string {
   return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}` : (nombres[0] ?? '')
 }
 
-// Orden en que se muestran los chips de calidad
+// Orden en que se muestran los chips de calidad: problemas del agua
 export const QUALITY_ORDER: ReportQuality[] = ['mal_olor', 'turbia', 'sedimentos', 'otro']
+
+// Agua en buenas condiciones: con "Con agua" o "Baja presión", y no junto con un problema
+export const QUALITY_BUENA: ReportQuality[] = ['limpia', 'cristalina', 'sin_olor']
 
 export const QUALITY_LABELS: Record<ReportQuality, string> = {
   mal_olor: 'Mal olor',
   turbia: 'Turbia',
   sedimentos: 'Sedimentos o color extraño',
   otro: 'Otro',
+  limpia: 'Limpia',
+  cristalina: 'Cristalina',
+  sin_olor: 'Sin olor',
 }
 
 // Deben coincidir con max_length en wawhere-api/app/schemas/report.py

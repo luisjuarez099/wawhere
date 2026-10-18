@@ -3,7 +3,7 @@ import type { ReportStatus, ResumenCollection } from './types'
 
 // Resumen para el ciudadano en el panel de abajo: cuántos reportes llevamos.
 // Los números vigentes salen del mismo resumen que dibuja el mapa, así se
-// actualizan en vivo con cada reporte. Por ahora no cuenta las fugas.
+// actualizan en vivo con cada reporte. Los de agua suman en la barra; las fugas van aparte.
 
 const TZ = 'America/Mexico_City'
 const STATUS_ORDER: ReportStatus[] = ['no', 'baja', 'ok']
@@ -21,12 +21,21 @@ function plural(n: number, uno: string, varios: string): string {
   return `${fmtNum.format(n)} ${n === 1 ? uno : varios}`
 }
 
+function textSpan(className: string, text: string): HTMLSpanElement {
+  const span = document.createElement('span')
+  span.className = className
+  span.textContent = text
+  return span
+}
+
 export function initStatsPanel() {
   const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!
   const root = $('#stats')
   const toggle = $<HTMLButtonElement>('#stats-toggle')
   const summary = $('#stats-summary')
   const detail = $('#stats-detail')
+  const totalEl = $('#stats-total')
+  const fugasEl = $('#stats-fugas')
   const bar = $('#stats-bar')
   const counts = $<HTMLUListElement>('#stats-counts')
   const colonias = $('#stats-colonias')
@@ -40,31 +49,63 @@ export function initStatsPanel() {
     toggle.setAttribute('aria-expanded', String(open))
   })
 
+  // Titular: la respuesta a "¿hay problemas?" antes que los números
+  function headline(suma: number, conReportes: number, sinAguaCols: number, bajaCols: number): string {
+    if (!suma) return `Sin reportes en las últimas ${horas} h. ¡Sé el primero!`
+    if (sinAguaCols) return `${plural(sinAguaCols, 'colonia reporta', 'colonias reportan')} sin agua`
+    if (bajaCols) return `${plural(bajaCols, 'colonia reporta', 'colonias reportan')} baja presión`
+    return `${plural(conReportes, 'colonia reporta', 'colonias reportan')} con agua`
+  }
+
+  // Mientras llega el primer resumen, el panel dice que está cargando
+  function load(): void {
+    root.hidden = false
+    summary.replaceChildren(textSpan('stats-headline', 'Cargando reportes…'))
+    totalEl.textContent = 'Cargando reportes…'
+    fugasEl.textContent = ''
+    toggle.disabled = true
+  }
+
+  function fail(): void {
+    summary.replaceChildren(textSpan('stats-headline', 'No se pudieron cargar los reportes.'))
+    totalEl.textContent = 'No se pudieron cargar los reportes.'
+    fugasEl.textContent = ''
+    toggle.disabled = true
+  }
+
   // DOM con textContent: nunca se arma HTML con datos
   function update(data: ResumenCollection): void {
     const total = { no: 0, baja: 0, ok: 0 }
     let conReportes = 0
     let mayoriaSinAgua = 0
+    let sinAguaCols = 0
+    let bajaCols = 0
+    let fugas = 0
     for (const { properties: p } of data.features) {
+      fugas += p.fugas // se cuentan aparte, también en colonias sin reportes de agua
       const suministro = p.sin_agua + p.baja_presion + p.con_agua
-      if (suministro === 0) continue // solo fugas: fuera del resumen por ahora
+      if (suministro === 0) continue
       total.no += p.sin_agua
       total.baja += p.baja_presion
       total.ok += p.con_agua
       conReportes++
       if (p.sin_agua > p.baja_presion && p.sin_agua > p.con_agua) mayoriaSinAgua++
+      if (p.sin_agua > 0) sinAguaCols++
+      if (p.baja_presion > 0) bajaCols++
     }
     const suma = total.no + total.baja + total.ok
 
     root.hidden = false
-    summary.textContent = suma
-      ? `${plural(suma, 'reporte', 'reportes')} en las últimas ${horas} h · ${plural(conReportes, 'colonia', 'colonias')}`
-      : `Sin reportes en las últimas ${horas} h. ¡Sé el primero!`
+    // La barra solo dice la lectura; el conteo vive en el detalle
+    summary.replaceChildren(textSpan('stats-headline', headline(suma, conReportes, sinAguaCols, bajaCols)))
+    // El titular está oculto: el estado vacío se dice aquí. Las fugas van en su propia línea.
+    totalEl.textContent = suma
+      ? `${plural(suma, 'reporte de agua', 'reportes de agua')} en las últimas ${horas} h`
+      : `Sin reportes de agua en las últimas ${horas} h. ¡Sé el primero!`
+    fugasEl.textContent = fugas ? `${plural(fugas, 'reporte de fuga', 'reportes de fuga')}` : ''
+    // El punto en vivo cambia de color con la gravedad: rojo, amarillo o verde
+    root.style.setProperty('--live', sinAguaCols ? 'var(--c-no)' : bajaCols ? 'var(--c-baja)' : 'var(--c-ok)')
     toggle.disabled = suma === 0
-    if (!suma) {
-      detail.hidden = true
-      toggle.setAttribute('aria-expanded', 'false')
-    }
 
     bar.replaceChildren()
     counts.replaceChildren()
@@ -100,5 +141,5 @@ export function initStatsPanel() {
     historico.textContent = fmtNum.format(n)
   }
 
-  return { update, setHistorico }
+  return { load, fail, update, setHistorico }
 }
