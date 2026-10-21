@@ -33,7 +33,7 @@ export function errorMessage(err: unknown): string {
       : 'Revisa la calidad del agua o el comentario e intenta de nuevo.'
   }
   if (err instanceof ApiError && err.status === 429) {
-    return 'Enviaste varios reportes seguidos. Intenta de nuevo en unos minutos.'
+    return 'Ya enviaste un reporte desde esta conexión. Puedes reportar de nuevo en una hora.'
   }
   return 'No se pudo enviar tu reporte. Revisa tu conexión e intenta de nuevo.'
 }
