@@ -33,7 +33,11 @@ export function errorMessage(err: unknown): string {
       : 'Revisa la calidad del agua o el comentario e intenta de nuevo.'
   }
   if (err instanceof ApiError && err.status === 429) {
-    return 'Ya enviaste un reporte desde esta conexión. Puedes reportar de nuevo en una hora.'
+    // detail "limite_colonia" → esta colonia ya tiene un reporte reciente desde esta conexión;
+    // sin detail → tope general por conexión (slowapi)
+    return err.detail === 'limite_colonia'
+      ? 'Ya reportaste esta colonia hace poco. Puedes volver a reportarla en una hora.'
+      : 'Se enviaron muchos reportes desde esta conexión. Intenta de nuevo más tarde.'
   }
   return 'No se pudo enviar tu reporte. Revisa tu conexión e intenta de nuevo.'
 }

@@ -38,8 +38,10 @@ import { ClimaControl } from './climaLayer'
 import { LegendControl } from './legend-control'
 
 // Tras reportar, evita reportes repetidos por doble toque o impaciencia.
-// El límite real lo pone la API; esto solo cuida al usuario honesto.
-const REPORT_COOLDOWN_MS = 60_000
+// El límite real lo pone la API (1 por hora por colonia desde la misma conexión);
+// esto solo cuida al usuario honesto. Es corto para que pueda reportar enseguida
+// la colonia correcta si se equivocó.
+const REPORT_COOLDOWN_MS = 5_000
 
 // Los reportes vencidos solo desaparecen al volver a pedir el resumen
 const RESUMEN_REFRESH_MS = 120_000
@@ -337,7 +339,7 @@ const sheet = initReportSheet({
     } else {
       selectColonia(null)
     }
-    setLauncherMsg('Gracias. ¿No era tu colonia? Tócala en el mapa y reporta de nuevo en un minuto.', 'ok')
+    setLauncherMsg('Gracias. ¿No era tu colonia? Tócala en el mapa y reporta ahí.', 'ok')
     coolingDown = true
     setReportEnabled(false)
     window.setTimeout(() => {
