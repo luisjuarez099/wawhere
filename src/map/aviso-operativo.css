@@ -1,0 +1,162 @@
+/* Aviso del operativo de agua de Zapopan: modal y bloque de la hoja de colonia */
+
+:root {
+  --aviso-bg: #eef4f8; /* igual que --c-surface-tint */
+  --aviso-ink: #10232f;
+  --aviso-muted: #4a5b66;
+  --aviso-surface: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --aviso-bg: #1c2e38;
+    --aviso-ink: #e8f0f4;
+    --aviso-muted: #a9bac4;
+    --aviso-surface: #122029;
+  }
+}
+
+:root[data-theme='dark'] {
+  --aviso-bg: #1c2e38;
+  --aviso-ink: #e8f0f4;
+  --aviso-muted: #a9bac4;
+  --aviso-surface: #122029;
+}
+
+/* ─── Bloque fijo en la hoja de colonia ─── */
+
+.aviso-hoja {
+  padding: 14px 16px;
+  border-radius: var(--r-card);
+  background: var(--aviso-bg);
+  border-left: 4px solid var(--c-primary);
+}
+
+.aviso-hoja[hidden] {
+  display: none;
+}
+
+.aviso-hoja-texto {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--aviso-ink);
+}
+
+/* ─── Botón para llamar (enlace con aspecto de botón) ─── */
+
+.aviso-llamar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px; /* más de 44 px para tocar bien */
+  padding: 0 16px;
+  border-radius: var(--r-card);
+  background: var(--c-primary);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.aviso-llamar:hover {
+  background: var(--c-primary-hover);
+}
+
+.aviso-llamar:focus-visible {
+  outline: 3px solid var(--c-primary);
+  outline-offset: 3px;
+}
+
+/* ─── Modal ─── */
+
+.aviso-modal {
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sheet);
+  background: var(--aviso-surface);
+  color: var(--aviso-ink);
+  box-shadow: 0 12px 40px rgba(16, 35, 47, 0.28);
+  overflow-y: auto;
+}
+
+.aviso-modal::backdrop {
+  background: rgba(16, 35, 47, 0.5);
+}
+
+.aviso-modal-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 20px calc(20px + env(safe-area-inset-bottom));
+}
+
+.aviso-fuente {
+  margin: 0;
+  font-size: 13px;
+  color: var(--aviso-muted);
+}
+
+.aviso-titulo {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.aviso-texto,
+.aviso-nota {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.aviso-nota {
+  font-size: 13px;
+  color: var(--aviso-muted);
+}
+
+.aviso-datos {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aviso-datos li {
+  padding: 12px 14px;
+  border-radius: var(--r-card);
+  background: var(--aviso-bg);
+  font-size: 15px;
+}
+
+.aviso-datos b {
+  display: block;
+  font-size: 24px;
+  color: var(--c-primary);
+}
+
+.aviso-seguir {
+  min-height: 52px;
+  border-radius: var(--r-card);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .aviso-modal[open] {
+    animation: aviso-entrar 0.18s ease-out;
+  }
+}
+
+@keyframes aviso-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

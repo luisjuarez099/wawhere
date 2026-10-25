@@ -49,6 +49,7 @@ export interface Colonia {
   nombre: string
   municipio: string
   cp: string // código postal; vacío si la colonia no lo tiene
+  zonas?: string // zonas del SIAPA que toca el polígono, tal como viene del tile; puede faltar
 }
 // Cada resultado de GET /api/colonias?q=: datos de la colonia y su caja [oeste, sur, este, norte]
 export interface ColoniaBusqueda {

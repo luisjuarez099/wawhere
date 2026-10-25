@@ -209,6 +209,7 @@ export function toColonia(feature: GeoJSONFeature): Colonia | null {
     nombre: String(feature.properties?.nombre ?? ''),
     municipio: String(feature.properties?.municipio ?? ''),
     cp: String(feature.properties?.cp ?? ''),
+    zonas: String(feature.properties?.zonas ?? ''),
   }
 }
 

@@ -1,4 +1,5 @@
 import { getColoniaComentarios, getColoniaDetalle } from './api'
+import { crearAvisoEnHoja, mostrarAvisoSiAplica } from './aviso-operativo'
 import { DIAS, QUALITY_LABELS, QUALITY_ORDER, REPORT_EXPIRY_MS, STATUS_LABELS, ZONA_COLORS, estadoAgua, listaDias } from './config'
 import type { Colonia, ColoniaComentario, ColoniaDetalle, ColoniaResumenProps, ReportStatus, RotacionColonia } from './types'
 
@@ -100,6 +101,10 @@ export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheet
     report: $<HTMLButtonElement>('#cs-report'),
     close: $<HTMLButtonElement>('#cs-close'),
   }
+
+  // Aviso de Zapopan: va arriba del bloque del SIAPA. Las zonas vienen del detalle
+  const aviso = crearAvisoEnHoja()
+  el.rotacion.before(aviso.el)
 
   let colonia: Colonia | null = null
   let ctrl: AbortController | null = null
@@ -247,6 +252,7 @@ export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheet
     el.chips.replaceChildren(...conReportes.map((q) => li(QUALITY_LABELS[q], d.quality[q])))
 
     renderRotacion(d.rotacion)
+    aviso.actualizar({ id: d.colonia_id, municipio: d.municipio }, d.rotacion?.zonas ?? [])
 
     // Comentarios: todo el historial de la colonia, del más reciente al más viejo,
     // aunque ya no haya reportes activos. Llegan de 10 en 10; el resto con "Ver más"
@@ -308,7 +314,11 @@ export function initColoniaSheet({ onReport, onClose, onRotacion }: ColoniaSheet
     sheet.setAttribute('aria-busy', 'true')
     try {
       const detalle = await getColoniaDetalle(c.id, ctrl.signal)
-      if (colonia?.id === c.id) render(detalle)
+      if (colonia?.id === c.id) {
+        render(detalle)
+        // El modal sale solo con las zonas del SIAPA, así que espera al detalle
+        mostrarAvisoSiAplica({ id: c.id, municipio: detalle.municipio }, detalle.rotacion?.zonas ?? [])
+      }
     } catch (err) {
       if ((err as DOMException).name === 'AbortError') return
       console.error(err)
