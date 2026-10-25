@@ -342,6 +342,14 @@
               <h2 class="sheet-title sheet-title--lg" tabindex="-1">Tu reporte se sumó</h2>
               <p class="done-summary" id="done-summary"></p>
             </div>
+            <!-- Solo si el reporte es de falta o baja presión (lo decide report-sheet.ts) -->
+            <div class="done-siapabot" id="done-siapabot" hidden>
+              <p class="done-summary">
+                ¿Sigue sin agua? Repórtalo también al SIAPA por WhatsApp:
+                <strong>33 5164 4440</strong>
+              </p>
+              <a class="btn-secondary" href="https://wa.me/523351644440" target="_blank" rel="noopener noreferrer">Abrir WhatsApp del SIAPABOT</a>
+            </div>
             <!-- Tarjeta "Calidad en tu colonia": oculta hasta que exista en backend -->
             <div class="done-actions">
               <button type="button" class="btn-primary" data-action="share">

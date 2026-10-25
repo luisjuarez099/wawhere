@@ -62,6 +62,7 @@ export function initReportSheet({ onSent, onChangeColonia }: ReportSheetOptions)
   const coloniaHint = panel.querySelector<HTMLElement>('#report-colonia-hint')!
   const doneSummary = panel.querySelector<HTMLElement>('#done-summary')!
   const doneMsg = panel.querySelector<HTMLElement>('#done-msg')!
+  const doneSiapabot = panel.querySelector<HTMLElement>('#done-siapabot')!
   const desktop = window.matchMedia('(min-width: 768px)')
 
   let current: Colonia | null = null
@@ -210,6 +211,8 @@ export function initReportSheet({ onSent, onChangeColonia }: ReportSheetOptions)
       const saved = await createReport({ colonia_id: current.id, ...fields })
       // El resumen sale de lo que guardó la API, no del formulario
       doneSummary.textContent = summary(saved.status, saved.quality)
+      // Falta de agua o baja presión: se ofrece el WhatsApp del SIAPABOT para reportarlo al SIAPA
+      doneSiapabot.hidden = !['no', 'baja', 'fuga'].includes(saved.status)
       showStep('done')
       onSent(saved, current)
     } catch (err) {
